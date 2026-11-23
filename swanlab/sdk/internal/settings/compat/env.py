@@ -2,7 +2,7 @@
 遗留环境变量读取工具：统一剥离 shell 脚本注入的成对引号。
 
 某些 shell 脚本（eval、命令替换、/etc/environment）注入的环境变量会保留字面引号字符，
-例如 ``SWANLAB_API_KEY='"abc123"'`` 的实际值为 ``"abc123"``（含引号）。
+例如 ``SWANLAB_MODE='"offline"'`` 的实际值为 ``"offline"``（含引号）。
 所有遗留环境变量的读取都应通过 :func:`getenv` 完成，避免引号进入 Settings 解析。
 """
 

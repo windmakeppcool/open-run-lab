@@ -29,8 +29,7 @@ from swanlab.proto.swanlab.grpc.probe.v1.probe_pb2 import DeliverProbeStartReque
 from swanlab.proto.swanlab.run.v1.run_pb2 import FinishRecord
 from swanlab.sdk.internal.bus import FileSaveEvent, MetricDefineEvent, MetricLogEvent
 from swanlab.sdk.internal.context import RunContext
-from swanlab.sdk.internal.core_python import client
-from swanlab.sdk.internal.pkg import adapter, console, fork, helper, safe
+from swanlab.sdk.internal.pkg import adapter, console, fork, safe
 from swanlab.sdk.internal.run import greeting
 from swanlab.sdk.internal.run.components import Components
 from swanlab.sdk.internal.run.components.config import Config
@@ -114,7 +113,7 @@ class Run:
         Access run properties:
 
         >>> import swanlab
-        >>> run = swanlab.init(mode="local", project="my_project")
+        >>> run = swanlab.init(mode="offline", project="my_project")
         >>> print(run.id)
         >>> print(run.dir)
         >>> swanlab.finish()
@@ -122,7 +121,7 @@ class Run:
         Log metrics:
 
         >>> import swanlab
-        >>> run = swanlab.init(mode="local")
+        >>> run = swanlab.init(mode="offline")
         >>> run.log({"loss": 0.5, "accuracy": 0.95})
         >>> swanlab.finish()
     """
@@ -283,30 +282,27 @@ class Run:
     @cached_property
     def path(self) -> str:
         """
-        Current run path in the format of /:username/:project_name/:run_id.
+        Current run path. 纯本地模式下不提供云端实验路径。
 
         :return: Run path
         """
         if not self._path:
             raise ValueError(
-                "Run path is unavailable because the current run is not using SwanLab online mode. "
-                "Please initialize SwanLab with online mode to access the run path."
+                "Run path is unavailable in the local-only build. "
+                "Use `run.dir` to locate the local run directory instead."
             )
         return self._path
 
     @cached_property
     def url(self) -> str:
         """
-        Current run URL if in online mode, otherwise None.
-        :return: Run URL or None
+        Current run URL. 纯本地模式下不提供云端实验链接。
+
+        :return: Run URL
         """
-        if not self._path:
-            raise ValueError(
-                "Run url is unavailable because the current run is not using SwanLab online mode. "
-                "Please initialize SwanLab with online mode to access the run path."
-            )
-        settings = self._ctx.config.settings
-        return f"{settings.web_host}{helper.fmt_run_path(self._path)}"
+        raise ValueError(
+            "Run url is unavailable in the local-only build. Use `run.dir` to locate the local run directory instead."
+        )
 
     @cached_property
     def config(self) -> Config:
@@ -707,7 +703,7 @@ class Run:
             Custom X-axis with separate logging:
 
             >>> import swanlab
-            >>> swanlab.init(mode="local")
+            >>> swanlab.init(mode="offline")
             >>> run = swanlab.get_run()
             >>> run.define_metric("train/loss", x_axis="train/epoch")
             >>> swanlab.log({"train/epoch": 1})    # step=1
@@ -930,11 +926,6 @@ class Run:
         # 清理全局运行实例
         console.debug("Cleanup global instance...")
         clear_run()
-        # [随临时方案删除] online 模式下销毁全局 client 单例，确保下次 init() 重新认证获取新 sid，
-        # 避免服务端在实验结束后使 sid 失效导致 401；待 client 生命周期归属 Core 后删除，跟踪 issue: #1742
-        if self.mode == "online" and client.exists():
-            console.debug("Reset online client...")
-            client.reset()
         console.debug("Clean & tidy! ciallo ( ∠・ω< ) ~ ★")
         # 释放日志，本次运行结束
         console.reset()
@@ -973,7 +964,7 @@ def get_run() -> Run:
         Access run properties:
 
         >>> import swanlab
-        >>> swanlab.init(mode="local")
+        >>> swanlab.init(mode="offline")
         >>> run = swanlab.get_run()
         >>> print(run.id)
         >>> swanlab.finish()

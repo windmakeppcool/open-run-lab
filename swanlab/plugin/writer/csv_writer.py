@@ -13,7 +13,6 @@ from typing import TYPE_CHECKING, Dict, List, Optional
 
 from swanlab.proto.swanlab.metric.data.v1.data_pb2 import ScalarRecord
 from swanlab.sdk.internal.pkg import safe
-from swanlab.sdk.internal.pkg.helper import fmt_run_path
 from swanlab.sdk.protocol import Callback
 
 if TYPE_CHECKING:
@@ -29,12 +28,6 @@ _METADATA_COLUMNS = [
     "logdir",
     "url",
 ]
-
-
-def _build_url(settings, path: Optional[str]) -> Optional[str]:
-    if path and settings.mode in ("online", "offline"):
-        return f"{settings.web_host}{fmt_run_path(path)}"
-    return None
 
 
 def _load_config(run_dir: Path) -> Dict[str, str]:
@@ -91,7 +84,7 @@ class CSVWriter(Callback):
             "workspace": settings.project.workspace or "",
             "timestamp": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
             "logdir": str(run_dir),
-            "url": _build_url(settings, path) or "",
+            "url": "",
         }
 
     def on_scalar_flush(self, scalar_records: List[ScalarRecord], *args, **kwargs) -> None:

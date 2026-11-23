@@ -6,7 +6,6 @@
 """
 
 import pytest
-from pydantic import ValidationError
 
 from swanlab.sdk.internal.settings import Settings
 
@@ -18,15 +17,11 @@ def test_integration_nested_env_parse(monkeypatch):
     """
     monkeypatch.setenv("SWANLAB_INTEGRATION_WEBHOOK_URL", "https://nested.hook.com")
     monkeypatch.setenv("SWANLAB_INTEGRATION_WEBHOOK_VALUE", "nested_token")
-    monkeypatch.setenv("SWANLAB_INTEGRATION_DASHBOARD_HOST", "192.168.1.100")
-    monkeypatch.setenv("SWANLAB_INTEGRATION_DASHBOARD_PORT", "9090")
 
     s = Settings()
 
     assert s.integration.webhook.url == "https://nested.hook.com"
     assert s.integration.webhook.value == "nested_token"
-    assert s.integration.dashboard.host == "192.168.1.100"
-    assert s.integration.dashboard.port == 9090
 
 
 def test_integration_env_priority(monkeypatch):
@@ -42,10 +37,9 @@ def test_integration_env_priority(monkeypatch):
     assert s.integration.webhook.url == "https://new.hook.com"
 
 
-@pytest.mark.parametrize("env_name", ["SWANLAB_DASHBOARD_PORT", "SWANLAB_INTEGRATION_DASHBOARD_PORT"])
-@pytest.mark.parametrize("port", ["0", "65536"])
-def test_dashboard_port_range(monkeypatch, env_name, port):
-    monkeypatch.setenv(env_name, port)
+@pytest.mark.parametrize("timeout", ["abc"])
+def test_webhook_timeout_must_be_int(monkeypatch, timeout):
+    monkeypatch.setenv("SWANLAB_WEBHOOK_TIMEOUT", timeout)
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(ValueError):
         Settings()

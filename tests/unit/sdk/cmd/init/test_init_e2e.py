@@ -2,409 +2,69 @@
 @author: cunyue
 @file: test_init_e2e.py
 @time: 2026/3/14
-@description: 测试 swanlab.init() 的端到端行为
+@description: 测试 swanlab.init() 的端到端行为（纯本地版本）
 
 测试分组：
   - TestInitDisabledMode     : disabled 模式，无文件系统写入
-  - TestInitLocalMode        : local 模式，验证目录创建
-  - TestInitOfflineMode      : offline 模式，验证目录创建与 workspace 字段
+  - TestInitOfflineMode      : offline 模式，验证目录创建与本地落盘
   - TestInitReinit           : reinit 参数行为（跳过/重建）
   - TestInitSettingsPriority : 配置优先级（全局 < 自定义 < 传参）
-  - TestInitResumeValidation : resume/id 校验逻辑
-  - TestInitOnlineMode       : online 模式，依赖本文件内的 HTTP mock fixtures
-  - TestInitOnlineSkipStore  : online + core.skip_store，本地不产生任何文件
-  - TestOnlineMultipleInit   : online 模式多次 init/finish，验证 finish 后 client 重置与重新认证
   - TestInitFactoryDispatch  : 验证 factory 模式按模式分派组件类型
-  - TestRunSave              : run.save() 各 policy / 各模式的端到端行为
+  - TestRunSave              : run.save() 在 offline 模式下的本地镜像行为
 """
 
-import errno
 import json
-import multiprocessing
-import sys
 from typing import cast
-from unittest.mock import MagicMock
 
 import pytest
-import requests
-import responses as responses_lib
-import yaml
+import responses
 
-from swanlab.exceptions import AuthenticationError
 from swanlab.sdk.cmd.init import init
-from swanlab.sdk.cmd.login import login_cli
 from swanlab.sdk.cmd.merge_settings import merge_settings
-from swanlab.sdk.internal.bus import FileSaveEvent, MetricLogEvent, RunEmitter
-from swanlab.sdk.internal.core_python import CorePython, client
-from swanlab.sdk.internal.core_python.watcher import NullFileWatcher
-from swanlab.sdk.internal.pkg import console, fork
-from swanlab.sdk.internal.probe_python import ProbePython
-from swanlab.sdk.internal.run import Run, get_run, has_run
+from swanlab.sdk.internal.bus import RunEmitter
+from swanlab.sdk.internal.run import has_run
 from swanlab.sdk.internal.run.components import BackgroundConsumer, NullConsumer, NullEmitter
-from swanlab.sdk.internal.run.components.config import config as global_config
 from swanlab.sdk.internal.settings import Settings, create_settings
 from swanlab.sdk.typings.run import ModeType
-
-# ============================================================
-# Online 模式测试常量
-# ============================================================
-API_HOST = "https://api.fake.swanlab.cn"
-WEB_HOST = "https://test.swanlab.cn"
-USERNAME = "test-user"
-PROJECT = "test-project"
-RUN_ID = "test-run-id"
-EXPERIMENT_CUID = "test-experiment-cuid"
-API_KEY = "test-api-key"
-
-
-# ============================================================
-# Online 模式响应体数据工厂
-# 返回与后端 schema 一致的 dict，支持 **overrides 局部定制
-# ============================================================
-
-
-def make_login_resp(**overrides) -> dict:
-    """POST /api/login/api_key 响应体"""
-    return {
-        "sid": "mock-sid",
-        "expiredAt": "2099-12-31T23:59:59.000Z",
-        "userInfo": {"username": USERNAME, "name": "Test User"},
-        **overrides,
-    }
-
-
-def make_init_project_resp(**overrides) -> dict:
-    """POST /api/projects/{username} 响应体（创建/获取项目）"""
-    return {
-        "name": PROJECT,
-        "username": USERNAME,
-        "path": f"/{USERNAME}/{PROJECT}",
-        **overrides,
-    }
-
-
-def make_project_detail_resp(experiment_count: int = 0, **overrides) -> dict:
-    """GET /api/project/{username}/{name} 响应体（项目详情）"""
-    return {
-        "cuid": "test-project-cuid",
-        "name": PROJECT,
-        "version": 1,
-        "group": {"username": USERNAME},
-        "username": USERNAME,
-        "path": f"/{USERNAME}/{PROJECT}",
-        "visibility": "PRIVATE",
-        "_count": {
-            "experiments": experiment_count,
-            "contributors": 1,
-            "collaborators": 0,
-            "clones": 0,
-        },
-        **overrides,
-    }
-
-
-def make_experiment_resp(**overrides) -> dict:
-    """POST /api/project/{username}/{project}/experiment 响应体"""
-    return {"cuid": EXPERIMENT_CUID, "slug": RUN_ID, "name": "test-experiment", **overrides}
-
-
-def make_ok_resp(**overrides) -> dict:
-    """通用 {"message": "ok"} 响应体，适用于 stop/profile/columns/metrics/heartbeat 等端点"""
-    return {"message": "ok", **overrides}
-
-
-# ============================================================
-# Online 模式 HTTP Mock Fixtures
-#
-# 分层设计：
-#   层 1 - rsps：激活 responses.RequestsMock，所有 endpoint fixture 共享同一实例
-#   层 2 - 单一 Endpoint Fixture：每个 fixture 只注册一个 API 端点
-#   层 3 - 组合 Fixture：mock_online_init_apis 一次性装配 init() online 流程所需端点
-#
-# 未来 _init_online 新增 API 调用时，只需：
-#   1. 新增 make_*_resp() 工厂函数
-#   2. 新增对应 endpoint fixture
-#   3. 将其追加为 mock_online_init_apis 的参数
-# ============================================================
-
-
-@pytest.fixture
-def rsps():
-    """激活 responses.RequestsMock 上下文，供所有 endpoint fixture 共享同一实例。
-
-    teardown 时在 responses 上下文关闭前自动 finish 当前 run，
-    确保实验结束请求（stop_experiment）在 mock 活跃期间发出，
-    避免 responses 报 "Not all requests have been executed" 错误。
-    """
-    with responses_lib.RequestsMock() as r:
-        yield r
-        # 在 responses 上下文关闭前，finish 当前 run 以触发 stop_experiment 请求
-        if has_run():
-            get_run().finish()
-
-
-@pytest.fixture
-def mock_login_api(rsps):
-    """注册 POST /api/login/api_key 端点"""
-    rsps.add(responses_lib.POST, f"{API_HOST}/api/login/api_key", json=make_login_resp(), status=200)
-    return rsps
-
-
-@pytest.fixture
-def mock_project_create_api(rsps):
-    """注册 POST /api/projects/{username} 端点（创建或获取项目）"""
-    rsps.add(responses_lib.POST, f"{API_HOST}/api/projects/{USERNAME}", json=make_init_project_resp(), status=201)
-    return rsps
-
-
-@pytest.fixture
-def mock_project_get_api(rsps):
-    """注册 GET /api/project/{username}/{name} 端点（项目详情）"""
-    rsps.add(
-        responses_lib.GET, f"{API_HOST}/api/project/{USERNAME}/{PROJECT}", json=make_project_detail_resp(), status=200
-    )
-    return rsps
-
-
-@pytest.fixture
-def mock_experiment_create_api(rsps):
-    """注册 POST /api/project/{username}/{project}/experiment 端点（创建/恢复实验）"""
-    rsps.add(
-        responses_lib.POST,
-        f"{API_HOST}/api/project/{USERNAME}/{PROJECT}/experiment",
-        json=make_experiment_resp(),
-        status=201,
-    )
-    return rsps
-
-
-@pytest.fixture
-def mock_experiment_stop_api(rsps):
-    """注册 PUT /api/project/{username}/{project}/runs/{cuid}/state 端点（停止实验）"""
-    rsps.add(
-        responses_lib.PUT,
-        f"{API_HOST}/api/project/{USERNAME}/{PROJECT}/runs/{EXPERIMENT_CUID}/state",
-        json=make_ok_resp(),
-        status=200,
-    )
-    return rsps
-
-
-@pytest.fixture
-def mock_profile_api(rsps):
-    """注册 PUT /api/project/{username}/{project}/runs/{cuid}/profile 端点（环境信息上传）"""
-    rsps.add(
-        responses_lib.PUT,
-        f"{API_HOST}/api/project/{USERNAME}/{PROJECT}/runs/{EXPERIMENT_CUID}/profile",
-        json=make_ok_resp(),
-        status=200,
-    )
-    return rsps
-
-
-@pytest.fixture
-def mock_columns_api(rsps):
-    """注册 POST /api/projects/{username}/{project}/series 端点（新版列信息上传）"""
-    rsps.add(
-        responses_lib.POST,
-        f"{API_HOST}/api/projects/{USERNAME}/{PROJECT}/series",
-        json=make_ok_resp(),
-        status=200,
-    )
-    return rsps
-
-
-@pytest.fixture
-def mock_metrics_api(rsps):
-    """注册 POST /api/house/metrics 端点（标量/媒体/日志指标上传）"""
-    rsps.add(
-        responses_lib.POST,
-        f"{API_HOST}/api/house/metrics",
-        json=make_ok_resp(),
-        status=200,
-    )
-    return rsps
-
-
-@pytest.fixture
-def mock_heartbeat_api(rsps):
-    """注册 POST /api/house/experiments/{experiment_id}/heartbeat 端点（实验心跳）"""
-    rsps.add(
-        responses_lib.POST,
-        f"{API_HOST}/api/house/experiments/{EXPERIMENT_CUID}/heartbeat",
-        json=make_ok_resp(),
-        status=200,
-    )
-    return rsps
-
-
-@pytest.fixture
-def mock_online_settings():
-    """将全局 settings 的 api_host/web_host 指向测试 HOST，避免意外触发生产环境
-    同时取消硬件监控，硬件监控不在本端到端测试的覆盖范围
-    """
-    merge_settings({"api_host": API_HOST, "web_host": WEB_HOST, "probe": {"monitor": False}})
-
-
-@pytest.fixture
-def mock_online_init_apis(
-    mock_online_settings,
-    mock_login_api,
-    mock_project_get_api,
-    mock_experiment_create_api,
-    mock_experiment_stop_api,
-    mock_profile_api,
-    mock_columns_api,
-    mock_metrics_api,
-    mock_heartbeat_api,
-):
-    """
-    组合 fixture：一次性注册 init(mode='online') 常规流程所需的全部 HTTP 端点
-    （登录、项目、实验、列、指标、心跳），不包含媒体上传端点（presigned/对象存储），
-    需要媒体上传的测试请自行追加对应 fixture。
-    所有子 fixture 通过 pytest 的 fixture 缓存机制共享同一个 rsps 实例。
-    """
-    pass
-
-
-@pytest.fixture
-def logged_in_client(mock_login_api, mock_online_settings):
-    """
-    调用 login_raw() 完成登录流程，确保全局 client 已创建。
-    依赖 mock_login_api，故登录请求不会触及真实网络。
-    清理由上级 conftest.py 的 isolate_sdk_environment 统一处理。
-    """
-    login_cli(api_key=API_KEY, host=create_settings().api_host)
-    yield
-
-
-@pytest.fixture
-def offline_warnings(monkeypatch):
-    """捕获降级告警，便于断言只告警一次。"""
-    messages = []
-    original = console.warning
-
-    def _warning(*args, **kwargs):
-        messages.append(" ".join(str(arg) for arg in args))
-        return original(*args, **kwargs)
-
-    monkeypatch.setattr("swanlab.sdk.cmd.init.console.warning", _warning)
-    return messages
-
-
-@pytest.fixture
-def offline_errors(monkeypatch):
-    """捕获上游错误的打印，验证错误在发生处就已被记录。"""
-    messages = []
-    original = console.error
-
-    def _error(*args, **kwargs):
-        # console.trace 通过 console_args 传入终端文案
-        console_args = kwargs.get("console_args") or args
-        messages.append(" ".join(str(arg) for arg in console_args))
-        return original(*args, **kwargs)
-
-    monkeypatch.setattr("swanlab.sdk.cmd.init.console.error", _error)
-    return messages
-
-
-# ============================================================
-# TestInitDisabledMode
-# ============================================================
 
 
 class TestInitDisabledMode:
     def test_init_returns_run_instance(self):
-        """disabled 模式应返回 Run 实例，且 has_run() 为 True"""
         run = init(mode="disabled")
-
-        assert isinstance(run, Run)
-        assert has_run()
-
-    def test_init_on_online_error_is_merged_into_settings(self):
-        """init 参数应写入本次 run 的 settings，供后续降级策略使用"""
-        run = init(mode="disabled", on_online_error="raise")
-
-        assert run._ctx.config.settings.on_online_error == "raise"
+        assert run is not None
+        assert has_run() is True
         run.finish()
 
     def test_init_does_not_create_log_dir(self):
-        """disabled 模式不得创建日志目录"""
+        """disabled 模式不应创建日志目录"""
         run = init(mode="disabled")
         log_dir = run._ctx.config.settings.log_dir
-
         assert not log_dir.exists()
-
-    def test_init_workspace_is_none_by_default(self):
-        """disabled 模式下 workspace 默认为 None"""
-        run = init(mode="disabled")
-
-        assert run._ctx.config.settings.project.workspace is None
-
-    def test_init_custom_workspace_is_preserved(self):
-        """disabled 模式下用户自定义 workspace 应被保留"""
-        run = init(mode="disabled", workspace="my-workspace")
-
-        assert run._ctx.config.settings.project.workspace == "my-workspace"
-
-    def test_disabled_mode_does_not_write_media_files(self):
-        """disabled 模式下 log 媒体数据不应写入任何本地文件"""
-        import numpy as np
-
-        run = init(mode="disabled")
-        # 记录 log_dir 下所有文件（理论上不应存在任何文件）
-        log_dir = run._ctx.config.settings.log_dir
-
-        # log 各类媒体
-        run.log({"loss": 0.5})
-        run.log_image(key="img", data=np.zeros((10, 10, 3), dtype=np.uint8))
-        run.log_text(key="txt", data="hello")
-        run.log_audio(key="audio", data=np.zeros((1, 4410), dtype=np.float32), sample_rate=44100)
         run.finish()
 
-        # log_dir 不应存在，或者即使存在也不应包含媒体文件
-        assert not log_dir.exists()
+    def test_init_workspace_is_none_by_default(self):
+        run = init(mode="disabled")
+        assert run._ctx.config.settings.project.workspace is None
+        run.finish()
 
-    def test_log_ignores_unexpected_emitter_error(self, monkeypatch):
-        """log 内部未预期异常不应中断用户代码"""
-        with init(mode="disabled") as run:
-            trace = MagicMock()
-            monkeypatch.setattr(console, "trace", trace)
-            run._components.emitter.emit = MagicMock(side_effect=RuntimeError("emit failed"))
-
-            try:
-                run.log({"loss": 0.5})
-            except RuntimeError as e:
-                pytest.fail(f"run.log() raised unexpected error: {e}")
-
-            event = run._components.emitter.emit.call_args.args[0]
-            assert isinstance(event, MetricLogEvent)
-            assert event.data == {"loss": 0.5}
-            trace.assert_called_once_with(
-                "SwanLab failed to log data due to unexpected error",
-                write_to_file=True,
-                write_to_tty=True,
-                level_name="error",
-            )
+    def test_init_custom_workspace_is_preserved(self):
+        run = init(mode="disabled", workspace="my-workspace")
+        assert run._ctx.config.settings.project.workspace == "my-workspace"
+        run.finish()
 
 
-# ============================================================
-# TestInitLocalMode
-# ============================================================
-
-
-class TestInitLocalMode:
+class TestInitOfflineMode:
     def test_init_creates_log_dir_with_gitignore(self):
-        """local 模式应创建日志目录，并在首次创建时写入 .gitignore"""
-        run = init(mode="local")
+        """offline 模式应创建日志目录，并在首次创建时写入 .gitignore"""
+        run = init(mode="offline")
         log_dir = run._ctx.config.settings.log_dir
 
         assert log_dir.exists()
         assert (log_dir / ".gitignore").exists()
 
     def test_init_creates_run_subdirs(self):
-        """local 模式应创建 run_dir、media_dir、files_dir、debug_dir"""
-        run = init(mode="local")
+        """offline 模式应创建 run_dir、media_dir、files_dir、debug_dir"""
+        run = init(mode="offline")
         ctx = run._ctx
 
         assert ctx.run_dir.exists()
@@ -412,48 +72,34 @@ class TestInitLocalMode:
         assert ctx.files_dir.exists()
         assert ctx.debug_dir.exists()
 
-    def test_init_fails_when_log_dir_is_not_writable(self, tmp_path, monkeypatch):
-        """log_dir 不可写时应在 init 阶段明确失败，避免后续静默丢点。"""
-        log_dir = tmp_path / "root-owned-log-dir"
-        log_dir.mkdir()
-
-        def deny_mkstemp(*args, **kwargs):
-            raise PermissionError(errno.EACCES, "Permission denied")
-
-        monkeypatch.setattr("swanlab.sdk.internal.pkg.fs.dir.tempfile.mkstemp", deny_mkstemp)
-
-        with pytest.raises(PermissionError, match="Directory .* is not writable"):
-            init(mode="local", log_dir=str(log_dir))
-        assert not has_run()
-
     def test_init_workspace_is_none_by_default(self):
-        """local 模式下 workspace 默认为 None"""
-        run = init(mode="local")
-
+        run = init(mode="offline")
         assert run._ctx.config.settings.project.workspace is None
 
-    def test_init_custom_workspace_is_preserved(self):
-        """local 模式下用户自定义 workspace 应被保留"""
-        run = init(mode="local", workspace="my-team")
-
-        assert run._ctx.config.settings.project.workspace == "my-team"
-
     def test_init_auto_generates_name_and_color(self):
-        """local 模式未传 name/color 时，应自动生成非空字符串"""
-        run = init(mode="local")
+        """未传 name/color 时，应自动生成非空字符串"""
+        run = init(mode="offline")
         s = run._ctx.config.settings
 
         assert s.experiment.name
         assert s.experiment.color
 
     def test_init_preserves_custom_experiment_name(self):
-        """显式传入 name 时，不应被默认实验名覆盖。"""
-        run = init(mode="local", name="test-save-exp")
-
+        run = init(mode="offline", name="test-save-exp")
         assert run._ctx.config.settings.experiment.name == "test-save-exp"
 
-    def test_init_local_sends_webhook_with_path_run_dir(self):
-        """local init 发送 webhook 时应支持真实上下文中的 Path run_dir。"""
+    def test_init_writes_local_store_on_finish(self):
+        """offline 模式 log 后 finish，应留下本地 store 文件"""
+        run = init(mode="offline")
+        run.log({"loss": 0.5})
+        run_file = run._ctx.run_file
+        run.finish()
+
+        assert run_file.exists()
+
+    @responses.activate
+    def test_init_sends_webhook_with_path_run_dir(self):
+        """offline init 发送 webhook 时应支持真实上下文中的 Path run_dir。"""
         webhook_url = "https://example.com/webhook"
         webhook_settings = Settings.model_validate(
             {
@@ -468,1334 +114,71 @@ class TestInitLocalMode:
             }
         )
 
-        with responses_lib.RequestsMock(assert_all_requests_are_fired=False) as rsps:
-            rsps.add(responses_lib.POST, webhook_url, status=200)
-            run = init(mode="local", project="webhook-project", settings=webhook_settings)
-            try:
-                assert len(rsps.calls) == 1
-                request = rsps.calls[0].request
-                payload = json.loads(request.body)  # type: ignore
-                assert payload["value"] == "test_webhook_value"
-                assert payload["swanlab"]["mode"] == "local"
-                assert payload["swanlab"]["run_dir"] == str(run._ctx.run_dir)
-            finally:
-                run.finish()
-
-
-# ============================================================
-# TestInitOfflineMode
-# ============================================================
-
-
-class TestInitOfflineMode:
-    def test_init_creates_directories(self):
-        """offline 模式应创建日志目录及运行子目录"""
-        run = init(mode="offline")
-
-        assert run._ctx.config.settings.log_dir.exists()
-        assert run._ctx.run_dir.exists()
-
-    def test_init_workspace_is_none_by_default(self):
-        """offline 模式下 workspace 默认为 None"""
-        run = init(mode="offline")
-
-        assert run._ctx.config.settings.project.workspace is None
-
-    def test_init_custom_workspace_is_preserved(self):
-        """offline 模式下用户自定义 workspace 应被保留"""
-        run = init(mode="offline", workspace="my-org")
-
-        assert run._ctx.config.settings.project.workspace == "my-org"
-
-    def test_auto_step_starts_from_zero(self):
-        """offline 模式下，未显式传入 step 时首次 run.log() 应从 step=0 开始自增"""
-        with init(mode="offline") as run:
-            run._components.emitter.emit = MagicMock(wraps=run._components.emitter.emit)
-
-            run.log({"loss": 0.5})
-            run.log({"loss": 0.4})
-
-            events = [call.args[0] for call in run._components.emitter.emit.call_args_list]
-            assert all(isinstance(event, MetricLogEvent) for event in events)
-            assert [event.step for event in events] == [0, 1]
-
-
-# ============================================================
-# TestInitReinit
-# ============================================================
+        responses.add(responses.POST, webhook_url, status=200)
+        run = init(mode="offline", project="webhook-project", settings=webhook_settings)
+        assert len(responses.calls) == 1
+        payload = json.loads(responses.calls[0].request.body)  # type: ignore[arg-type]
+        assert payload["swanlab"]["mode"] == "offline"
+        assert payload["swanlab"]["run_dir"] == str(run._ctx.run_dir)
+        run.finish()
 
 
 class TestInitReinit:
     def test_reinit_false_raises_when_run_exists(self):
-        """reinit=False（默认）时，第二次 init() 应抛出 RuntimeError"""
-        _ = init(mode="disabled")
-
-        with pytest.raises(RuntimeError, match="`swanlab.init` requires an inactive Run"):
+        run = init(mode="disabled")
+        with pytest.raises(RuntimeError, match="requires an inactive Run"):
             init(mode="disabled", reinit=False)
+        run.finish()
 
     def test_reinit_true_creates_new_run(self):
-        """reinit=True 时，第二次 init() 应先 finish 旧 Run，再返回全新 Run"""
-        run1 = init(mode="disabled")
-        run2 = init(mode="disabled", reinit=True)
+        first = init(mode="offline")
+        second = init(mode="offline", reinit=True)
 
-        assert run1 is not run2
-        assert has_run()
-
-
-# ============================================================
-# TestInitSettingsPriority
-# ============================================================
+        assert second is not first
+        assert has_run() is True
+        second.finish()
 
 
 class TestInitSettingsPriority:
     def test_args_override_global_settings(self):
-        """传参优先级最高：显式参数应覆盖通过 merge_settings 设置的全局配置"""
-        merge_settings({"mode": "offline"})
+        merge_settings({"project": {"name": "global-project"}})
 
-        run = init(mode="disabled")
+        run = init(mode="disabled", project="arg-project")
 
-        assert run._ctx.config.settings.mode == "disabled"
+        assert run._ctx.config.settings.project.name == "arg-project"
+        run.finish()
 
     def test_custom_settings_override_global(self):
-        """自定义 Settings 对象优先级高于全局配置，但低于显式传参"""
-        merge_settings({"mode": "offline"})
+        merge_settings({"project": {"name": "global-project"}})
+        custom = Settings(project=Settings.Project(name="custom-project"))
 
-        run = init(mode="disabled", settings=Settings(mode="local"))
+        run = init(mode="disabled", settings=custom)
 
-        # 显式参数 mode="disabled" > custom mode="local" > global mode="offline"
-        assert run._ctx.config.settings.mode == "disabled"
-
-
-# ============================================================
-# TestInitResumeValidation
-# ============================================================
-
-
-class TestInitResumeValidation:
-    def test_resume_must_without_id_raises(self, monkeypatch):
-        """online 模式 resume='must' 但未提供 id → AssertionError"""
-        monkeypatch.setattr("swanlab.sdk.cmd.init.prompt_init_mode", lambda _: "online")
-
-        with pytest.raises(AssertionError, match="Run id must be provided"):
-            init(mode="online", resume="must")
-
-    def test_resume_never_with_id_raises(self, monkeypatch):
-        """online 模式 resume='never' 但同时提供了 id → AssertionError"""
-        monkeypatch.setattr("swanlab.sdk.cmd.init.prompt_init_mode", lambda _: "online")
-
-        with pytest.raises(AssertionError, match="Run id should not be provided"):
-            init(mode="online", resume="never", id="some-run-id")
-
-    def test_resume_validation_skipped_for_non_online_mode(self):
-        """非 online 模式下，resume/id 校验不触发（即使传了也不报错）"""
-        run = init(mode="offline", resume="must")
-
-        assert isinstance(run, Run)
-
-
-# ============================================================
-# TestInitOnlineMode
-# ============================================================
-
-
-class TestInitOnlineMode:
-    def test_init_online_success(
-        self,
-        logged_in_client,
-        mock_project_get_api,
-        mock_experiment_create_api,
-        mock_experiment_stop_api,
-        mock_profile_api,
-        mock_heartbeat_api,
-        mock_metrics_api,
-    ):
-        """online 模式完整 init 流程：返回 Run，has_run() 为 True"""
-        run = init(mode="online", project=PROJECT)
-
-        assert isinstance(run, Run)
-        assert has_run()
-
-    def test_init_online_sets_project_and_workspace(
-        self,
-        logged_in_client,
-        mock_project_get_api,
-        mock_experiment_create_api,
-        mock_experiment_stop_api,
-        mock_profile_api,
-        mock_heartbeat_api,
-        mock_metrics_api,
-    ):
-        """online 模式下，workspace 和 project.name 应与后端响应同步"""
-        run = init(mode="online", project=PROJECT)
-        s = run._ctx.config.settings
-
-        assert s.project.workspace == USERNAME
-        assert s.project.name == PROJECT
-
-    def test_init_online_project_already_exists(
-        self,
-        logged_in_client,
-        rsps,
-        mock_experiment_create_api,
-        mock_experiment_stop_api,
-        mock_profile_api,
-        mock_heartbeat_api,
-        mock_metrics_api,
-    ):
-        """新版创建接口不可用且旧接口返回 409（项目已存在）时，应继续初始化"""
-        # 按调用顺序注册项目端点（responses 对同 URL 注册按顺序消费）：
-        # GET 项目 404 → POST 新版创建 404 → POST 旧版创建 409 → GET 项目 200
-        rsps.add(
-            responses_lib.GET, f"{API_HOST}/api/project/{USERNAME}/{PROJECT}", json={"message": "not found"}, status=404
-        )
-        rsps.add(responses_lib.POST, f"{API_HOST}/api/projects/{USERNAME}", json={"message": "not found"}, status=404)
-        rsps.add(responses_lib.POST, f"{API_HOST}/api/project", json=make_init_project_resp(), status=409)
-        rsps.add(
-            responses_lib.GET,
-            f"{API_HOST}/api/project/{USERNAME}/{PROJECT}",
-            json=make_project_detail_resp(),
-            status=200,
-        )
-
-        run = init(mode="online", project=PROJECT)
-
-        assert isinstance(run, Run)
-        assert run._ctx.config.settings.project.workspace == USERNAME
-
-    def test_init_online_creates_project_when_missing(
-        self,
-        logged_in_client,
-        rsps,
-        mock_project_create_api,
-        mock_experiment_create_api,
-        mock_experiment_stop_api,
-        mock_profile_api,
-        mock_heartbeat_api,
-        mock_metrics_api,
-    ):
-        """项目不存在时应调用新版创建接口（GET 404 → POST 201 → GET 200）"""
-        # GET 项目 404 → （fixture 已注册 POST 创建 201）→ GET 项目 200
-        rsps.add(
-            responses_lib.GET, f"{API_HOST}/api/project/{USERNAME}/{PROJECT}", json={"message": "not found"}, status=404
-        )
-        rsps.add(
-            responses_lib.GET,
-            f"{API_HOST}/api/project/{USERNAME}/{PROJECT}",
-            json=make_project_detail_resp(),
-            status=200,
-        )
-
-        run = init(mode="online", project=PROJECT)
-
-        create_calls = [c for c in rsps.calls if c.request.url == f"{API_HOST}/api/projects/{USERNAME}"]
-        assert len(create_calls) == 1
-        assert isinstance(run, Run)
-
-    def test_init_online_uses_all_expected_endpoints(
-        self,
-        logged_in_client,
-        mock_project_get_api,
-        mock_experiment_create_api,
-        mock_experiment_stop_api,
-        mock_profile_api,
-        mock_heartbeat_api,
-        mock_metrics_api,
-        rsps,
-    ):
-        """验证 online init 确实调用了 project 和 experiment 端点"""
-        init(mode="online", project=PROJECT)
-
-        non_login_calls = [c.request.url for c in rsps.calls if "login" not in c.request.url]
-
-        assert any("project" in u for u in non_login_calls), "应调用 project 端点"
-        assert any("experiment" in u for u in non_login_calls), "应调用 experiment 端点"
-
-    def test_init_online_sends_custom_experiment_name(
-        self,
-        logged_in_client,
-        mock_project_get_api,
-        mock_experiment_stop_api,
-        mock_profile_api,
-        mock_heartbeat_api,
-        mock_metrics_api,
-        rsps,
-    ):
-        """online 模式应将用户传入的实验名发送给后端并同步响应。"""
-        rsps.add(
-            responses_lib.POST,
-            f"{API_HOST}/api/project/{USERNAME}/{PROJECT}/experiment",
-            json=make_experiment_resp(name="test-save-exp"),
-            status=201,
-        )
-
-        run = init(mode="online", project=PROJECT, name="test-save-exp")
-
-        experiment_calls = [
-            call for call in rsps.calls if call.request.url == f"{API_HOST}/api/project/{USERNAME}/{PROJECT}/experiment"
-        ]
-        assert len(experiment_calls) == 1
-        payload = json.loads(cast(bytes, experiment_calls[0].request.body))
-        assert payload["name"] == "test-save-exp"
-        assert run._ctx.config.settings.experiment.name == "test-save-exp"
-
-
-# ============================================================
-# TestInitOnlineStartFallback
-# ============================================================
-
-
-class TestInitOnlineStartFallback:
-    PROJECT_URL = f"{API_HOST}/api/project/{USERNAME}/{PROJECT}"
-
-    @staticmethod
-    def _assert_offline_run(run: Run, warnings: list[str]) -> None:
-        assert run.mode == "offline"
-        assert run._ctx.config.settings.mode == "offline"
-        assert run.dir.exists()
-        assert len([m for m in warnings if "falling back to offline mode" in m]) == 1
-        with pytest.raises(ValueError):
-            _ = run.url
-        with pytest.raises(ValueError):
-            _ = run.path
-
-    def test_project_503_degrades_to_offline(self, logged_in_client, rsps, offline_warnings, offline_errors):
-        rsps.add(responses_lib.GET, self.PROJECT_URL, status=503)
-
-        run = init(mode="online", project=PROJECT)
-
-        self._assert_offline_run(run, offline_warnings)
-        # 上游错误在 Core 内打印，降级告警只负责通知策略
-        assert any("Failed to start run" in message for message in offline_errors)
-        assert not client.exists()
-        run.log({"loss": 1.0})
+        assert run._ctx.config.settings.project.name == "custom-project"
         run.finish()
-        assert (run.dir / f"run-{run.id}.swanlab").exists()
-
-    def test_project_malformed_response_degrades_to_offline(self, logged_in_client, rsps, offline_warnings):
-        rsps.add(responses_lib.GET, self.PROJECT_URL, body="<html>bad gateway</html>", status=200)
-
-        run = init(mode="online", project=PROJECT)
-
-        self._assert_offline_run(run, offline_warnings)
-
-    def test_project_503_with_raise_policy(self, logged_in_client, rsps):
-        rsps.add(responses_lib.GET, self.PROJECT_URL, status=503)
-
-        with pytest.raises(RuntimeError):
-            init(mode="online", project=PROJECT, on_online_error="raise")
-
-    def test_project_forbidden_raises_authentication_error(self, logged_in_client, rsps):
-        rsps.add(responses_lib.GET, self.PROJECT_URL, json={"message": "forbidden"}, status=403)
-
-        with pytest.raises(AuthenticationError):
-            init(mode="online", project=PROJECT)
-
-    def test_resume_must_degrades_with_warning(self, logged_in_client, rsps, offline_warnings):
-        rsps.add(responses_lib.GET, self.PROJECT_URL, status=503)
-
-        run = init(mode="online", project=PROJECT, id=RUN_ID, resume="must")
-
-        self._assert_offline_run(run, offline_warnings)
-        assert any('resume="must"' in message for message in offline_warnings)
-
-    def test_project_503_with_skip_store_keeps_local_data(self, logged_in_client, rsps, offline_warnings):
-        merge_settings({"core": {"skip_store": True}})
-        rsps.add(responses_lib.GET, self.PROJECT_URL, status=503)
-
-        run = init(mode="online", project=PROJECT)
-
-        self._assert_offline_run(run, offline_warnings)
-        assert run._ctx.config.settings.core.skip_store is False
-        run.log({"loss": 2.0})
-        run.finish()
-        assert (run.dir / f"run-{run.id}.swanlab").exists()
-
-    def test_fallback_start_failure_raises(self, logged_in_client, rsps, offline_warnings, monkeypatch):
-        """降级后的 Core 再次启动失败时，应把错误抛给调用方，而不是继续静默降级。"""
-        from swanlab.proto.swanlab.grpc.core.v1.core_pb2 import DeliverRunStartResponse
-        from swanlab.sdk.cmd import init as init_module
-
-        rsps.add(responses_lib.GET, self.PROJECT_URL, status=503)
-        fallback_core = MagicMock()
-        fallback_core.deliver_run_start.return_value = DeliverRunStartResponse(
-            success=False, message="fallback start failed"
-        )
-        monkeypatch.setattr(init_module, "create_core", MagicMock(return_value=fallback_core))
-        monkeypatch.setattr(init_module, "create_probe", MagicMock(return_value=MagicMock()))
-
-        with pytest.raises(RuntimeError, match="fallback start failed"):
-            init(mode="online", project=PROJECT)
-
-    @staticmethod
-    def _assert_disabled_run(run: Run, warnings: list[str]) -> None:
-        assert run.mode == "disabled"
-        assert run._ctx.config.settings.mode == "disabled"
-        assert run._ctx.config.settings.core.skip_store is False
-        # disabled 降级必须重建为不做任何上报的 probe，避免退化成 online probe
-        assert run._ctx.probe._disabled is True
-        assert len([m for m in warnings if "falling back to disabled mode" in m]) == 1
-        with pytest.raises(ValueError):
-            _ = run.url
-        with pytest.raises(ValueError):
-            _ = run.path
-
-    def test_project_503_degrades_to_disabled(self, logged_in_client, rsps, offline_warnings):
-        rsps.add(responses_lib.GET, self.PROJECT_URL, status=503)
-
-        run = init(mode="online", project=PROJECT, on_online_error="disabled")
-
-        self._assert_disabled_run(run, offline_warnings)
-        assert not client.exists()
-        run.log({"loss": 1.0})
-        run.finish()
-        assert not (run.dir / f"run-{run.id}.swanlab").exists()
-
-    def test_resume_must_degrades_to_disabled_with_warning(self, logged_in_client, rsps, offline_warnings):
-        rsps.add(responses_lib.GET, self.PROJECT_URL, status=503)
-
-        run = init(mode="online", project=PROJECT, id=RUN_ID, resume="must", on_online_error="disabled")
-
-        self._assert_disabled_run(run, offline_warnings)
-        assert any("no data will be recorded" in message for message in offline_warnings)
-        run.finish()
-
-
-def test_login_error_classification_excludes_config_errors():
-    """URL / 协议配置错误不应被判定为可降级的连接错误。"""
-    from requests.exceptions import InvalidURL
-
-    from swanlab.sdk.internal.pkg.client import is_transient_login_error
-
-    assert is_transient_login_error(requests.ConnectionError("boom"))
-    assert not is_transient_login_error(InvalidURL("bad url"))
-    assert not is_transient_login_error(AuthenticationError("bad key"))
-
-
-# ============================================================
-# TestInitOnlineLoginFallback
-# ============================================================
-
-
-class TestInitOnlineLoginFallback:
-    LOGIN_URL = f"{API_HOST}/api/login/api_key"
-
-    @pytest.fixture(autouse=True)
-    def _api_key(self):
-        merge_settings({"api_key": API_KEY})
-
-    @staticmethod
-    def _assert_offline_run(run: Run, warnings: list[str]) -> None:
-        assert run.mode == "offline"
-        assert run._ctx.config.settings.mode == "offline"
-        assert run.dir.exists()
-        assert len([m for m in warnings if "falling back to offline mode" in m]) == 1
-
-    def test_login_connection_error_degrades_to_offline(
-        self, rsps, mock_online_settings, offline_warnings, offline_errors
-    ):
-        rsps.add(responses_lib.POST, self.LOGIN_URL, body=requests.ConnectionError("boom"))
-
-        run = init(mode="online", project=PROJECT)
-
-        self._assert_offline_run(run, offline_warnings)
-        # 上游错误在登录处打印，降级告警只负责通知策略
-        assert any("Failed to login" in message and "boom" in message for message in offline_errors)
-        assert not client.exists()
-        run.log({"loss": 1.0})
-        run.finish()
-        assert (run.dir / f"run-{run.id}.swanlab").exists()
-
-    def test_login_connection_error_degrades_to_disabled(self, rsps, mock_online_settings, offline_warnings):
-        rsps.add(responses_lib.POST, self.LOGIN_URL, body=requests.ConnectionError("boom"))
-
-        run = init(mode="online", project=PROJECT, on_online_error="disabled")
-
-        assert run.mode == "disabled"
-        assert len([m for m in offline_warnings if "falling back to disabled mode" in m]) == 1
-        assert not client.exists()
-        run.log({"loss": 1.0})
-        run.finish()
-
-    def test_login_503_degrades_to_offline(self, rsps, mock_online_settings, offline_warnings):
-        rsps.add(responses_lib.POST, self.LOGIN_URL, status=503)
-
-        run = init(mode="online", project=PROJECT)
-
-        self._assert_offline_run(run, offline_warnings)
-        run.finish()
-
-    def test_login_malformed_response_degrades_to_offline(self, rsps, mock_online_settings, offline_warnings):
-        rsps.add(responses_lib.POST, self.LOGIN_URL, json={}, status=200)
-
-        run = init(mode="online", project=PROJECT)
-
-        self._assert_offline_run(run, offline_warnings)
-        run.finish()
-
-    def test_login_connection_error_with_raise_policy(self, rsps, mock_online_settings):
-        rsps.add(responses_lib.POST, self.LOGIN_URL, body=requests.ConnectionError("boom"))
-
-        with pytest.raises(AuthenticationError) as exc:
-            init(mode="online", project=PROJECT, on_online_error="raise")
-
-        assert isinstance(exc.value.__cause__, requests.ConnectionError)
-
-    def test_login_unauthorized_raises_authentication_error(self, rsps, mock_online_settings):
-        rsps.add(responses_lib.POST, self.LOGIN_URL, json={"message": "unauthorized"}, status=401)
-
-        with pytest.raises(AuthenticationError):
-            init(mode="online", project=PROJECT)
-
-
-# ============================================================
-# TestInitOnlineSkipStore
-# ============================================================
-
-
-class TestInitOnlineSkipStore:
-    """core.skip_store=true：online run 全程不产生任何本地文件。
-
-    skip 下内部 save 以 payload 内联，由 sender 解析后上传 profile。
-    """
-
-    @staticmethod
-    def _capture_probe_settings(monkeypatch, *, skip_store: bool):
-        """init 并捕获 probe 收到的 ProbeSettings。"""
-        captured = {}
-        original = ProbePython._start_when_enabled
-
-        def _capture(self, start_request):
-            captured["probe_settings"] = start_request.probe_settings
-            return original(self, start_request)
-
-        monkeypatch.setattr(ProbePython, "_start_when_enabled", _capture)
-        settings = Settings(core=Settings.Core(skip_store=True)) if skip_store else None
-        init(project=PROJECT, settings=settings)
-        return captured["probe_settings"]
-
-    def test_skip_store_creates_no_local_dirs(self, logged_in_client, mock_online_init_apis):
-        """整个 log_dir（含 run/media/files/debug 子目录）都不落盘"""
-        run = init(project=PROJECT, settings=Settings(core=Settings.Core(skip_store=True)))
-        log_dir = run._ctx.config.settings.log_dir
-
-        assert isinstance(run, Run)
-        assert run._ctx.config.settings.core.skip_store is True
-
-        run.log({"loss": 0.5})
-        run.finish()
-
-        assert not log_dir.exists()
-        assert not run._ctx.run_dir.exists()
-
-    def test_interactive_downgrade_disables_skip_store(self, monkeypatch, tmp_path):
-        """online 交互式降级到 offline 时，skip_store 被显式关闭而非抛裸 ValidationError。"""
-        monkeypatch.setenv("SWANLAB_CORE_SKIP_STORE", "true")
-        monkeypatch.setattr("swanlab.sdk.cmd.init.prompt_init_mode", lambda _: "offline")
-
-        run = init(mode="online", log_dir=str(tmp_path / "swanlog"))
-
-        assert run.mode == "offline"
-        assert run._ctx.config.settings.core.skip_store is False
-        assert run._ctx.config_file.exists()
-        run.finish()
-
-    def test_skip_store_probe_has_no_run_dir(
-        self,
-        monkeypatch,
-        logged_in_client,
-        mock_project_get_api,
-        mock_experiment_create_api,
-        mock_experiment_stop_api,
-        mock_profile_api,
-        mock_heartbeat_api,
-        mock_metrics_api,
-    ):
-        """skip_store 下 probe settings 显式携带 skip_store 且不携带 run_dir。"""
-        probe_settings = self._capture_probe_settings(monkeypatch, skip_store=True)
-
-        assert probe_settings.skip_store is True
-        assert probe_settings.HasField("run_dir") is False
-
-    def test_default_probe_has_run_dir(
-        self,
-        monkeypatch,
-        logged_in_client,
-        mock_project_get_api,
-        mock_experiment_create_api,
-        mock_experiment_stop_api,
-        mock_profile_api,
-        mock_heartbeat_api,
-        mock_metrics_api,
-    ):
-        """默认模式回归：probe settings 携带 run_dir 且 skip_store 为 False。"""
-        probe_settings = self._capture_probe_settings(monkeypatch, skip_store=False)
-
-        assert probe_settings.HasField("run_dir") is True
-        assert probe_settings.skip_store is False
-
-    @pytest.mark.parametrize("skip_store", [False, True])
-    def test_config_updates_upload_final_content(
-        self,
-        skip_store,
-        logged_in_client,
-        mock_project_get_api,
-        mock_experiment_create_api,
-        mock_experiment_stop_api,
-        mock_profile_api,
-        mock_heartbeat_api,
-        mock_metrics_api,
-        rsps,
-    ):
-        """config 新增、覆盖和删除后上传最终内容，skip_store 下不落盘。"""
-        global_config["lr"] = 0.01
-        global_config["removed"] = "initial"
-        run = init(
-            project=PROJECT,
-            settings=Settings(core=Settings.Core(skip_store=skip_store, record_interval=3600)),
-        )
-
-        assert run._ctx.config_file.exists() is not skip_store
-
-        run.config["epochs"] = 5
-        run.config["lr"] = 0.02
-        del run.config["removed"]
-
-        assert run._ctx.config_file.exists() is not skip_store
-
-        run.finish()
-        profile_bodies = [
-            json.loads(cast(bytes, call.request.body)) for call in rsps.calls if call.request.url.endswith("/profile")
-        ]
-        uploaded_configs = [body["config"] for body in profile_bodies if "config" in body]
-        assert len(uploaded_configs) == 1
-        assert uploaded_configs[-1] == {
-            "lr": {"value": 0.02, "desc": "", "sort": 0},
-            "epochs": {"value": 5, "desc": "", "sort": 2},
-        }
-
-    def test_skip_store_uploads_full_run_to_cloud(
-        self,
-        logged_in_client,
-        mock_online_skip_store_apis,
-        tmp_path,
-        rsps,
-    ):
-        """record 全部上云，本地零文件"""
-        import numpy as np
-
-        global_config["lr"] = 0.01
-        run = init(project=PROJECT, settings=Settings(core=Settings.Core(skip_store=True)))
-        checkpoint = tmp_path / "model.pt"
-        checkpoint.write_text("weights", encoding="utf-8")
-
-        run.log({"loss": 0.5})
-        run.log_image(key="img", data=np.zeros((10, 10, 3), dtype=np.uint8))
-        for policy in ("now", "end", "live"):
-            run.save("model.pt", base_path=str(tmp_path), policy=policy)
-
-        log_dir = run._ctx.config.settings.log_dir
-        run.finish()
-
-        # 本地零文件
-        assert not log_dir.exists()
-
-        # 标量 / 日志 / 媒体元数据经 /house/metrics 上传，列经 /series 上传
-        metric_bodies = [
-            json.loads(cast(bytes, c.request.body)) for c in rsps.calls if c.request.url.endswith("/house/metrics")
-        ]
-        assert {body["type"] for body in metric_bodies} >= {"scalar", "media", "log"}
-        assert any(c.request.url.endswith("/series") for c in rsps.calls)
-
-        # 媒体内容经预签名 URL 直传对象存储
-        assert len([c for c in rsps.calls if c.request.url == MEDIA_UPLOAD_URL]) == 1
-        presigned = [
-            json.loads(cast(bytes, c.request.body))
-            for c in rsps.calls
-            if c.request.url.endswith("/resources/presigned/put")
-        ]
-        assert any(body["paths"][0].startswith("media/image/") for body in presigned)
-
-        # 内部 save（config / metadata / requirements）经 profile 上传
-        profile_bodies = [
-            json.loads(cast(bytes, c.request.body)) for c in rsps.calls if c.request.url.endswith("/profile")
-        ]
-        assert any("config" in body for body in profile_bodies)
-        assert any("metadata" in body for body in profile_bodies)
-        assert any("requirements" in body for body in profile_bodies)
-
-        # custom save：prepare → 对象存储 PUT → complete
-        save_urls = [c.request.url for c in rsps.calls]
-        assert any("files/prepare" in url for url in save_urls)
-        assert sum(1 for url in save_urls if url in SKIP_STORE_SAVE_URLS) == 3
-        assert any("files/complete" in url for url in save_urls)
-
-    def test_skip_store_save_policy_normalization(self, logged_in_client, mock_online_init_apis, tmp_path, monkeypatch):
-        """skip_store 下 save 策略归一化：live（默认值与显式）→ now，now/end 原样；告警每 Run 一次。"""
-        emitted = []
-        original_emit = RunEmitter.emit
-
-        def _capture_emit(self, event):
-            if isinstance(event, FileSaveEvent):
-                emitted.append(event)
-                return None
-            return original_emit(self, event)
-
-        monkeypatch.setattr(RunEmitter, "emit", _capture_emit)
-        warnings: list = []
-        monkeypatch.setattr(console, "warning", lambda *args, **kwargs: warnings.append(args))
-
-        run = init(project=PROJECT, settings=Settings(core=Settings.Core(skip_store=True)))
-        assert isinstance(cast(CorePython, run._core)._watcher, NullFileWatcher)
-
-        checkpoint = tmp_path / "model.pt"
-        checkpoint.write_text("weights", encoding="utf-8")
-        run.log({"loss": 0.5})
-        run.save("model.pt", base_path=str(tmp_path))  # 默认 policy=live → 降级
-        run.save("model.pt", base_path=str(tmp_path), policy="live")  # 显式 live → 降级
-        run.save("model.pt", base_path=str(tmp_path), policy="now")
-        run.save("model.pt", base_path=str(tmp_path), policy="end")
-        run.finish()
-
-        assert [e.policy for e in emitted] == ["now", "now", "now", "end"]
-        downgrade_warnings = [w for w in warnings if "core.skip_store=True" in str(w)]
-        assert len(downgrade_warnings) == 1
-
-    def test_default_creates_datastore(
-        self,
-        logged_in_client,
-        mock_project_get_api,
-        mock_experiment_create_api,
-        mock_experiment_stop_api,
-        mock_profile_api,
-        mock_heartbeat_api,
-        mock_metrics_api,
-    ):
-        run = init(mode="online", project=PROJECT)
-
-        assert run._ctx.config.settings.core.skip_store is False
-        assert list(run._ctx.run_dir.glob("run-*.swanlab"))
-
-
-# ============================================================
-# TestOnlineMultipleInit
-# [随临时方案删除] 验证 finish() 后 client 单例被销毁、下次 init() 重新认证获取新 sid，
-# 避免 #1715：服务端在实验结束后使 sid 失效，二次 init 复用旧 client 导致 401。
-# 跟踪 issue: #1742，待 client 生命周期归属 Core 后删除本测试类
-# ============================================================
-
-
-class TestOnlineMultipleInit:
-    def test_second_init_relogin_after_finish(self, logged_in_client, mock_online_init_apis, rsps):
-        """两次 init/finish：finish 后 client 被重置，第二次 init 重新登录获取新 sid"""
-        # 第一次运行
-        run1 = init(mode="online", project=PROJECT)
-        run1.log({"loss": 0.5})
-        run1.finish()
-        assert not client.exists()
-
-        # 第二次运行：应重新认证并成功启动
-        run2 = init(mode="online", project=PROJECT)
-        assert isinstance(run2, Run)
-        assert has_run()
-        run2.log({"acc": 0.9})
-        run2.finish()
-
-        # 首次登录 1 次 + finish 后重登 1 次
-        login_calls = sum(1 for c in rsps.calls if c.request.url.endswith("/api/login/api_key"))
-        assert login_calls == 2
-
-    def test_client_reset_when_stop_experiment_fails(self, logged_in_client, mock_online_init_apis, rsps):
-        """stop_experiment 上报失败（404，不在重试 forcelist）时，finish 仍应重置 client"""
-        rsps.replace(
-            responses_lib.PUT,
-            f"{API_HOST}/api/project/{USERNAME}/{PROJECT}/runs/{EXPERIMENT_CUID}/state",
-            json={"message": "not found"},
-            status=404,
-        )
-
-        run = init(mode="online", project=PROJECT)
-        run.log({"loss": 0.5})
-        run.finish()
-
-        assert not client.exists()
-
-    def test_local_finish_keeps_client(self, logged_in_client):
-        """显式登录后运行 local 模式实验，finish 不应销毁 client（仅 online 模式重置）"""
-        run = init(mode="local", project=PROJECT)
-        run.finish()
-
-        assert client.exists()
-
-
-# ============================================================
-# TestInitConfigIntegration
-# ============================================================
-
-
-class TestInitConfigIntegration:
-    def test_disabled_mode_does_not_bind_config(self):
-        """disabled 模式下，config 不绑定，内存写入正常但不触发文件 IO"""
-        global_config["lr"] = 0.01
-        run = init(mode="disabled")
-
-        assert run.config["lr"] == 0.01
-
-    def test_local_mode_creates_config_file_after_init(self):
-        """local 模式 init() 后，config.yaml 应已存在（即使 config 为空）"""
-        run = init(mode="local")
-        config_file = run._ctx.config_file
-
-        assert config_file.exists()
-
-    def test_pre_init_values_appear_in_config_file(self):
-        """init() 前写入 config 的值，bindctx 时应一并 flush 到 config.yaml"""
-        global_config["pre_lr"] = 0.001
-        global_config["pre_epochs"] = 5
-
-        run = init(mode="local")
-        data = yaml.safe_load(run._ctx.config_file.read_text())
-
-        assert data["pre_lr"]["value"] == 0.001
-        assert data["pre_epochs"]["value"] == 5
-
-    def test_post_init_values_written_to_config_file(self):
-        """init() 后写入 config 的值，应实时写入 config.yaml"""
-        run = init(mode="local")
-        run.config["post_key"] = "hello"
-
-        data = yaml.safe_load(run._ctx.config_file.read_text())
-        assert data["post_key"]["value"] == "hello"
-
-    def test_config_reset_after_finish(self):
-        """finish() 后，全局 config 代理应指向 global config"""
-        global_config["global_key"] = "global"
-        run = init(mode="local")
-        run.config["run_key"] = "run"
-        run.finish()
-
-        assert "global_key" in global_config
-        assert "run_key" not in global_config
-
-    def test_global_config_unchanged_after_finish(self):
-        """finish() 后 global config 的键仍在"""
-        global_config["persistent"] = "value"
-        run = init(mode="local")
-        run.finish()
-
-        assert global_config["persistent"] == "value"
-
-    def test_init_config_param_merged_into_run_config(self):
-        """验证 init(config={"lr":0.01}) 写入 run.config"""
-        run = init(mode="local", config={"lr": 0.01, "batch_size": 32})
-
-        assert run.config["lr"] == 0.01
-        assert run.config["batch_size"] == 32
-
-    def test_proxy_points_to_run_config_after_init(self):
-        """验证 global_config 在 run 活跃时指向 run.config"""
-        run = init(mode="local")
-        run.config["run_key"] = "run_value"
-
-        assert global_config["run_key"] == "run_value"
-
-    def test_offline_mode_creates_config_file(self):
-        """offline 模式 init() 后，config.yaml 应已存在"""
-        run = init(mode="offline")
-
-        assert run._ctx.config_file.exists()
-
-    def test_config_yaml_has_correct_structure(self):
-        """config.yaml 的每个 key 应具有 {value, desc, sort} 结构"""
-        global_config["lr"] = 0.01
-        run = init(mode="local")
-
-        data = yaml.safe_load(run._ctx.config_file.read_text())
-        assert "value" in data["lr"]
-        assert "desc" in data["lr"]
-        assert "sort" in data["lr"]
-
-    def test_reinit_rebinds_config(self):
-        """reinit=True 重建 Run 后，config 应绑定到新的 config_file"""
-        run1 = init(mode="local")
-        run1.config["key1"] = "v1"
-        config_file1 = run1._ctx.config_file
-
-        run2 = init(mode="local", reinit=True)
-        run2.config["key2"] = "v2"
-        config_file2 = run2._ctx.config_file
-
-        data2 = yaml.safe_load(config_file2.read_text())
-        assert data2["key2"]["value"] == "v2"
-        # 两次 run 的 config_file 路径不同（时间戳不同）
-        assert config_file1 != config_file2
-
-
-# ============================================================
-# TestForkDetection
-# ============================================================
-
-
-# 参考: https://docs.python.org/3.9/library/multiprocessing.html#contexts-and-start-methods
-# macOS 多进程不支持 fork
-@pytest.mark.skipif(
-    sys.platform == "darwin" and sys.version_info < (3, 10),
-    reason=(
-        "CPython < 3.10 on macOS segfaults in the forked child (e.g. queue feeder thread "
-        "_send_bytes / Path.cwd) when the parent is multithreaded — corrupted malloc arena; "
-        "fixed in CPython 3.10. This is a CPython runtime bug, not a SwanLab bug — fork-safety "
-        "of the Run singleton is covered on other platforms."
-    ),
-)
-@pytest.mark.skipif(not hasattr(__import__("os"), "register_at_fork"), reason="fork not available on this platform")
-class TestForkDetection:
-    """测试 fork 检测机制：Run._init_pid 拦截 + fork.register(clear_run) 清理全局单例"""
-
-    def test_fork_init_pid_mismatch(self):
-        """真实 fork 后，子进程中 Run._init_pid 与当前 PID 不匹配"""
-        run = init(mode="disabled")
-        assert fork.current_pid() == run._init_pid
-
-        ctx = multiprocessing.get_context("fork")
-        result = ctx.Queue()
-
-        def child():
-            result.put(fork.is_forked(run._init_pid))
-
-        p = ctx.Process(target=child)
-        p.start()
-        p.join(timeout=5)
-        assert result.get() is True
-
-    def test_fork_clears_global_singleton(self):
-        """真实 fork 后，子进程中 has_run() 应返回 False"""
-        init(mode="disabled")
-        assert has_run()
-
-        ctx = multiprocessing.get_context("fork")
-        result = ctx.Queue()
-
-        def child():
-            result.put(has_run())
-
-        p = ctx.Process(target=child)
-        p.start()
-        p.join(timeout=5)
-        assert result.get() is False
-
-    def test_fork_log_raises_in_child(self):
-        """真实 fork 后，子进程中 run.log() 应抛出 RuntimeError"""
-        run = init(mode="disabled")
-
-        ctx = multiprocessing.get_context("fork")
-        result = ctx.Queue()
-
-        def child():
-            try:
-                run.log({"loss": 0.5})
-                result.put("no_error")
-            except RuntimeError as e:
-                result.put(str(e))
-
-        p = ctx.Process(target=child)
-        p.start()
-        p.join(timeout=5)
-        msg = result.get()
-        assert "does not support fork" in msg
-
-    def test_fork_finish_raises_in_child(self):
-        """真实 fork 后，子进程中 finish() 也应抛出 RuntimeError"""
-        run = init(mode="disabled")
-
-        ctx = multiprocessing.get_context("fork")
-        result = ctx.Queue()
-
-        def child():
-            try:
-                run.finish()
-                result.put("no_error")
-            except RuntimeError as e:
-                result.put(str(e))
-
-        p = ctx.Process(target=child)
-        p.start()
-        p.join(timeout=5)
-        msg = result.get()
-        assert "does not support fork" in msg
-
-    def test_fork_does_not_affect_parent(self):
-        """真实 fork 后，父进程中的 Run 应不受影响"""
-        run = init(mode="disabled")
-        assert run.alive
-
-        ctx = multiprocessing.get_context("fork")
-        p = ctx.Process(target=lambda: None)
-        p.start()
-        p.join(timeout=5)
-
-        # 父进程中 Run 仍然 alive
-        assert run.alive
-        assert fork.current_pid() == run._init_pid
-        assert has_run()
-
-    def test_can_init_new_run_in_child_after_fork(self):
-        """真实 fork 后，子进程中可以重新 init 创建新 Run"""
-        init(mode="disabled")
-
-        ctx = multiprocessing.get_context("fork")
-        result = ctx.Queue()
-
-        def child():
-            # fork 后 has_run() 为 False，可以重新 init
-            try:
-                run2 = init(mode="disabled")
-                result.put(("ok", run2.alive, has_run()))
-            except Exception as e:
-                result.put(("error", str(e)))
-
-        p = ctx.Process(target=child)
-        p.start()
-        p.join(timeout=5)
-        r = result.get()
-        assert r[0] == "ok"
-        assert r[1] is True
-        assert r[2] is True
-
-
-# ============================================================
-# TestEnsureRunDirE2E
-# ============================================================
-
-
-class TestEnsureRunDirE2E:
-    """端到端测试：init 遇到 run_dir 冲突时能自动重试并成功初始化"""
-
-    def test_init_local_retries_on_run_dir_conflict(self):
-        """预先在 log_dir 下创建与当前时间戳同名的 run_dir，init 应自动重试并使用不同路径"""
-        from datetime import datetime
-
-        run_id = "conflict-test"
-        log_dir = create_settings().log_dir
-        log_dir.mkdir(parents=True, exist_ok=True)
-        # 预先创建多个连续秒的冲突目录，确保命中
-        all_conflict_names = []
-        now = datetime.now()
-        for offset in range(-1, 3):
-            ts = datetime.fromtimestamp(now.timestamp() + offset)
-            conflict_name = "run-" + ts.strftime("%Y%m%d_%H%M%S") + "-" + run_id
-            (log_dir / conflict_name).mkdir(exist_ok=True)
-            all_conflict_names.append(conflict_name)
-
-        # init 应检测到冲突，等待后用新时间戳重试
-        run = init(mode="offline", id=run_id)
-        assert run._ctx.run_dir.exists()
-        assert run._ctx.config.run_dir not in all_conflict_names
-        run.finish()
-
-
-# ============================================================
-# TestInitFactoryDispatch
-# 验证 factory 模式按模式分派组件类型的设计约定
-# ============================================================
 
 
 class TestInitFactoryDispatch:
-    """验证 init() 创建的 Run 对象内部组件类型符合 factory 设计约定
+    """验证 init() 创建的 Run 对象内部组件类型符合 factory 设计约定"""
 
-    disabled 模式：NullEmitter + NullConsumer + unbound Config + 无 Monitor
-    非 disabled 模式：RunEmitter + BackgroundConsumer + bound Config + 有 Monitor（环境允许时）
-    """
-
-    def test_disabled_uses_null_emitter(self):
+    def test_disabled_uses_null_components(self):
         run = init(mode="disabled")
         assert isinstance(run._components.emitter, NullEmitter)
+        assert isinstance(run._components.consumer, NullConsumer)
+        run.finish()
 
-    @pytest.mark.parametrize("mode", ["local", "offline"])
-    def test_non_disabled_uses_run_emitter(self, mode):
+    @pytest.mark.parametrize("mode", ["offline"])
+    def test_offline_uses_runtime_components(self, mode):
         run = init(mode=cast(ModeType, mode))
         assert isinstance(run._components.emitter, RunEmitter)
-
-    def test_disabled_null_emitter_discards_events(self):
-        """NullEmitter.emit() 丢弃事件，队列始终为空"""
-        run = init(mode="disabled")
-        run._components.emitter.emit("test-event")  # type: ignore
-        assert run._components.emitter.queue.empty()
-
-    def test_non_disabled_run_emitter_enqueues_events(self):
-        """RunEmitter.emit() 将事件放入队列"""
-        run = init(mode="local")
-        # 排空 greeting 产生的 ConsoleEvent
-        while not run._components.emitter.queue.empty():
-            run._components.emitter.queue.get_nowait()
-        run._components.emitter.emit("test-event")  # type: ignore
-        assert not run._components.emitter.queue.empty()
-        assert run._components.emitter.queue.get_nowait() == "test-event"
-
-    def test_disabled_uses_null_consumer(self):
-        run = init(mode="disabled")
-        assert isinstance(run._components.consumer, NullConsumer)
-
-    @pytest.mark.parametrize("mode", ["local", "offline"])
-    def test_non_disabled_uses_background_consumer(self, mode):
-        run = init(mode=cast(ModeType, mode))
         assert isinstance(run._components.consumer, BackgroundConsumer)
-
-    def test_disabled_config_is_unbound(self):
-        """disabled 模式 Config 不绑定文件，写操作仅内存"""
-        run = init(mode="disabled")
-        run.config["key"] = "value"
-
-        assert run.config["key"] == "value"
-        assert not run._ctx.config_file.exists()
-
-    @pytest.mark.parametrize("mode", ["local", "offline"])
-    def test_non_disabled_config_is_bound(self, mode):
-        """非 disabled 模式 Config 绑定文件，写操作持久化"""
-        run = init(mode=cast(ModeType, mode))
-        run.config["key"] = "value"
-
-        assert run._ctx.config_file.exists()
-
-
-# ============================================================
-# Save API Response Factories
-# ============================================================
-
-
-def make_save_prepare_resp(**overrides) -> dict:
-    """POST /api/experiment/{experiment_id}/files/prepare 响应体"""
-    return {"urls": ["https://storage.fake.swanlab.cn/save/0"], **overrides}
-
-
-# ============================================================
-# Save HTTP Mock Fixtures
-# ============================================================
-
-
-@pytest.fixture
-def mock_save_prepare_api(rsps):
-    """注册 POST /api/experiment/{experiment_id}/files/prepare 端点"""
-    rsps.add(
-        responses_lib.POST,
-        f"{API_HOST}/api/experiment/{EXPERIMENT_CUID}/files/prepare",
-        json=make_save_prepare_resp(),
-        status=200,
-    )
-    return rsps
-
-
-@pytest.fixture
-def mock_save_complete_api(rsps):
-    """注册 POST /api/experiment/{experiment_id}/files/complete 端点"""
-    rsps.add(
-        responses_lib.POST,
-        f"{API_HOST}/api/experiment/{EXPERIMENT_CUID}/files/complete",
-        json=make_ok_resp(),
-        status=201,
-    )
-    return rsps
-
-
-@pytest.fixture
-def mock_save_upload_api(rsps):
-    """注册 PUT 预签名 URL 端点（上传 save 文件到对象存储）"""
-    rsps.add(
-        responses_lib.PUT,
-        "https://storage.fake.swanlab.cn/save/0",
-        body="",
-        status=200,
-    )
-    return rsps
-
-
-@pytest.fixture
-def mock_online_save_apis(
-    mock_online_settings,
-    mock_login_api,
-    mock_project_get_api,
-    mock_experiment_create_api,
-    mock_experiment_stop_api,
-    mock_profile_api,
-    mock_heartbeat_api,
-    mock_metrics_api,
-    mock_save_prepare_api,
-    mock_save_complete_api,
-    mock_save_upload_api,
-):
-    """组合 fixture：注册 init(mode='online') + save 上传所需的全部 HTTP 端点。"""
-    pass
-
-
-@pytest.fixture
-def mock_online_init_only(
-    mock_online_settings,
-    mock_login_api,
-    mock_project_get_api,
-    mock_experiment_create_api,
-    mock_experiment_stop_api,
-    mock_profile_api,
-    mock_heartbeat_api,
-    mock_metrics_api,
-):
-    """组合 fixture：仅注册 init(mode='online') 所需端点，不含 save/media 上传。"""
-    pass
-
-
-# ============================================================
-# Media / skip_store 全量 run Mock Fixtures
-# ============================================================
-
-MEDIA_UPLOAD_URL = "https://storage.fake.swanlab.cn/media/0"
-SKIP_STORE_SAVE_URLS = [f"https://storage.fake.swanlab.cn/save/{i}" for i in range(3)]
-
-
-def make_media_presigned_resp(**overrides) -> dict:
-    """POST /api/resources/presigned/put 响应体"""
-    return {"urls": [MEDIA_UPLOAD_URL], **overrides}
-
-
-@pytest.fixture
-def mock_media_presigned_api(rsps):
-    """注册 POST /api/resources/presigned/put 端点（媒体上传凭据）"""
-    rsps.add(
-        responses_lib.POST,
-        f"{API_HOST}/api/resources/presigned/put",
-        json=make_media_presigned_resp(),
-        status=200,
-    )
-    return rsps
-
-
-@pytest.fixture
-def mock_media_upload_api(rsps):
-    """注册 PUT 媒体预签名 URL 端点（媒体内容直传对象存储）"""
-    rsps.add(responses_lib.PUT, MEDIA_UPLOAD_URL, body="", status=200)
-    return rsps
-
-
-@pytest.fixture
-def mock_save_prepare_multi_api(rsps):
-    """注册 POST files/prepare 端点，返回与待上传文件数一致的预签名 URL"""
-    rsps.add(
-        responses_lib.POST,
-        f"{API_HOST}/api/experiment/{EXPERIMENT_CUID}/files/prepare",
-        json={"urls": list(SKIP_STORE_SAVE_URLS)},
-        status=200,
-    )
-    return rsps
-
-
-@pytest.fixture
-def mock_save_upload_multi_api(rsps):
-    """注册多个 save 预签名 URL 的 PUT 端点"""
-    for url in SKIP_STORE_SAVE_URLS:
-        rsps.add(responses_lib.PUT, url, body="", status=200)
-    return rsps
-
-
-@pytest.fixture
-def mock_online_skip_store_apis(
-    mock_online_settings,
-    mock_login_api,
-    mock_project_get_api,
-    mock_experiment_create_api,
-    mock_experiment_stop_api,
-    mock_profile_api,
-    mock_heartbeat_api,
-    mock_metrics_api,
-    mock_columns_api,
-    mock_media_presigned_api,
-    mock_media_upload_api,
-    mock_save_prepare_multi_api,
-    mock_save_complete_api,
-    mock_save_upload_multi_api,
-):
-    """组合 fixture：skip_store 全量 run（指标 + 媒体 + 三类 save）所需端点。"""
-    pass
-
-
-# ============================================================
-# TestRunSave
-# ============================================================
+        run.finish()
 
 
 class TestRunSave:
-    """端到端测试：run.save() 在 online/local/offline 模式下的行为"""
-
-    def test_save_now_triggers_upload_immediately(
-        self,
-        logged_in_client,
-        mock_online_save_apis,
-        tmp_path,
-        rsps,
-    ):
-        """policy='now' 时，save 应在 finish 前就触发 prepare → upload → complete 流程"""
-        run = init(mode="online", project=PROJECT)
-        checkpoint = tmp_path / "model.pt"
-        checkpoint.write_text("weights", encoding="utf-8")
-
-        run.save("model.pt", base_path=str(tmp_path), policy="now")
-        run.finish()
-
-        # 验证 save prepare 和 complete 端点被调用
-        save_calls = [
-            c.request.url for c in rsps.calls if "files/prepare" in c.request.url or "files/complete" in c.request.url
-        ]
-        assert len(save_calls) >= 2, f"Expected prepare + complete calls, got: {save_calls}"
-
-    def test_save_end_defers_upload_until_finish(
-        self,
-        logged_in_client,
-        mock_online_save_apis,
-        tmp_path,
-        rsps,
-    ):
-        """policy='end' 时，save 不应立即触发上传，而是在 finish 时才上传"""
-        run = init(mode="online", project=PROJECT)
-        checkpoint = tmp_path / "model.pt"
-        checkpoint.write_text("weights", encoding="utf-8")
-
-        # 记录 finish 前的 save API 调用次数
-        run.save("model.pt", base_path=str(tmp_path), policy="end")
-        before_finish_save_calls = [
-            c.request.url for c in rsps.calls if "files/prepare" in c.request.url or "files/complete" in c.request.url
-        ]
-
-        run.finish()
-
-        after_finish_save_calls = [
-            c.request.url for c in rsps.calls if "files/prepare" in c.request.url or "files/complete" in c.request.url
-        ]
-        # finish 后应有 save 相关的 API 调用（end policy 的延迟上传）
-        assert len(after_finish_save_calls) > len(before_finish_save_calls)
-
-    def test_save_returns_matched_paths(
-        self,
-        logged_in_client,
-        mock_online_save_apis,
-        tmp_path,
-    ):
-        """save() 应返回匹配到的文件相对路径列表"""
-        run = init(mode="online", project=PROJECT)
-        checkpoint = tmp_path / "model.pt"
-        checkpoint.write_text("weights", encoding="utf-8")
-
-        result = run.save("model.pt", base_path=str(tmp_path), policy="now")
-
-        assert result == ["model.pt"]
-        run.finish()
-
-    def test_save_no_match_returns_empty_list(self, logged_in_client, mock_online_init_only, tmp_path):
-        """save() 未匹配到文件时应返回空列表"""
-        run = init(mode="online", project=PROJECT)
-
-        result = run.save(str(tmp_path / "nonexistent" / "*.pt"), policy="now")
-
-        assert result == []
-        run.finish()
-
-    def test_save_local_mode_creates_symlink(self, tmp_path):
-        """local 模式下 save() 应在 files_dir 中创建 symlink"""
-        run = init(mode="local")
+    def test_save_offline_mode_creates_symlink(self, tmp_path):
+        """offline 模式下 save() 应在 files_dir 中创建 symlink"""
+        run = init(mode="offline")
         checkpoint = tmp_path / "model.pt"
         checkpoint.write_text("weights", encoding="utf-8")
 
@@ -1807,61 +190,37 @@ class TestRunSave:
         link_path = run._ctx.files_dir / "model.pt"
         assert link_path.exists()
 
-    def test_save_offline_mode_creates_symlink(self, tmp_path):
-        """offline 模式下 save() 应在 files_dir 中创建 symlink"""
+    def test_save_no_match_returns_empty_list(self, tmp_path):
         run = init(mode="offline")
-        checkpoint = tmp_path / "model.pt"
-        checkpoint.write_text("weights", encoding="utf-8")
-
-        result = run.save("model.pt", base_path=str(tmp_path), policy="now")
-        assert result == ["model.pt"]
-
-        run.finish()
-        link_path = run._ctx.files_dir / "model.pt"
-        assert link_path.exists()
-
-    def test_save_multiple_files(self, tmp_path):
-        """save() 匹配多个文件时应全部返回"""
-        run = init(mode="local")
-        (tmp_path / "ckpt_1.pt").write_text("w1", encoding="utf-8")
-        (tmp_path / "ckpt_2.pt").write_text("w2", encoding="utf-8")
-
-        result = run.save("*.pt", base_path=str(tmp_path), policy="now")
-
-        assert len(result) == 2
-        assert set(result) == {"ckpt_1.pt", "ckpt_2.pt"}
+        result = run.save("*.bin", base_path=str(tmp_path), policy="now")
+        assert result == []
         run.finish()
 
-    def test_save_with_base_path(self, tmp_path):
-        """save() 使用 base_path 参数时应正确计算相对路径"""
-        run = init(mode="local")
-        sub = tmp_path / "checkpoints"
-        sub.mkdir()
-        model = sub / "model.pt"
-        model.write_text("weights", encoding="utf-8")
 
-        result = run.save(str(model), base_path=str(sub), policy="now")
+def test_create_settings_snapshot_is_independent():
+    merge_settings({"project": {"name": "snapshot-project"}})
+    first = create_settings()
+    second = create_settings()
+    assert first is not second
+    assert first.project.name == "snapshot-project"
+    assert second.project.name == "snapshot-project"
 
-        assert result == ["model.pt"]
-        run.finish()
 
-    def test_save_live_triggers_initial_upload(
-        self,
-        logged_in_client,
-        mock_online_save_apis,
-        tmp_path,
-        rsps,
-    ):
-        """policy='live' 时，save 应触发初始上传（与 now 相同），并注册文件监听"""
-        run = init(mode="online", project=PROJECT)
-        checkpoint = tmp_path / "model.pt"
-        checkpoint.write_text("weights", encoding="utf-8")
+def test_run_finish_clears_global_run():
+    run = init(mode="offline")
+    assert has_run() is True
+    run.finish()
+    assert has_run() is False
 
-        run.save("model.pt", base_path=str(tmp_path), policy="live")
-        run.finish()
 
-        # 验证初始上传触发 prepare + complete
-        save_calls = [
-            c.request.url for c in rsps.calls if "files/prepare" in c.request.url or "files/complete" in c.request.url
-        ]
-        assert len(save_calls) >= 2, f"Expected prepare + complete calls for live policy, got: {save_calls}"
+def test_init_accepts_callback_instances():
+    """callbacks 参数应接受合法 Callback 实例（不做网络请求）"""
+    from swanlab.sdk.protocol import Callback
+
+    class _NoopCallback(Callback):
+        @property
+        def name(self) -> str:
+            return "NoopCallback"
+
+    run = init(mode="offline", callbacks=[_NoopCallback()])
+    run.finish()

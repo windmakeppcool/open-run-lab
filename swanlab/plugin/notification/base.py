@@ -3,7 +3,6 @@ from pathlib import Path
 from typing import Dict, Optional
 
 from swanlab.sdk.internal.pkg.executor import SafeThreadPoolExecutor
-from swanlab.sdk.internal.pkg.helper import fmt_run_path
 from swanlab.sdk.internal.settings import Settings
 from swanlab.sdk.protocol import Callback
 
@@ -41,8 +40,7 @@ _TEMPLATES: Dict[str, Dict[str, str]] = {
 
 
 def build_run_url(settings: Settings, path: Optional[str]) -> Optional[str]:
-    if path and settings.mode in ("online", "offline"):
-        return f"{settings.web_host}{fmt_run_path(path)}"
+    # 纯本地版本不提供云端实验链接
     return None
 
 

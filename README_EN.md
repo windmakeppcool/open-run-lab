@@ -12,7 +12,6 @@ Built for ML Teams — Integrated with 50+ Mainstream Frameworks and Designed to
 <a href="https://swanlab.cn">🔥SwanLab Cloud</a> · <a href="https://docs.swanlab.cn/en/">📃 Documentation</a> · <a href="https://github.com/swanhubx/swanlab/issues">Report Issues</a> · <a href="https://rcnpx636fedp.feishu.cn/share/base/form/shrcnwT9dTedqUchdpgzPzKvcmd">Feedback</a> · <a href="https://docs.swanlab.cn/en/guide_cloud/general/changelog.html">Changelog</a> · <img height="16" width="16" src="https://raw.githubusercontent.com/SwanHubX/assets/main/community.svg" alt="swanlab community Logo" /> <a href="https://swanlab.cn/benchmarks">Benchmarks</a> · <a href="https://github.com/SwanHubX/SwanLab-Skill">SKILL</a>
 
 [![][release-shield]][release-link]
-[![][dockerhub-shield]][dockerhub-link]
 [![][github-stars-shield]][github-stars-link]
 [![][github-issues-shield]][github-issues-shield-link]
 [![][github-contributors-shield]][github-contributors-link]
@@ -26,7 +25,7 @@ Built for ML Teams — Integrated with 50+ Mainstream Frameworks and Designed to
 
 ![](readme_files/swanlab-overview.png)
 
-[中文](README.md) / English / [日本語](README_JP.md) / [Русский](README_RU.md)
+[中文](README.md) / English
 
 👋 Join our [WeChat Group](https://docs.swanlab.cn/en/guide_cloud/community/online-support.html)
 
@@ -41,7 +40,7 @@ Built for ML Teams — Integrated with 50+ Mainstream Frameworks and Designed to
 - [👋🏻 What is SwanLab](#-what-is-swanlab)
 - [📃 Online Demos](#-online-demos)
 - [🏁 Quick Start](#-quick-start)
-- [💻 Self-Hosting](#-self-hosting)
+- [💻 Local-Only Runtime](#-local-only-runtime)
 - [🔥 Case Studies](#-case-studies)
 - [🎮 Hardware Monitoring](#-hardware-monitoring)
 - [🚗 Framework Integrations](#-framework-integrations)
@@ -54,9 +53,9 @@ Built for ML Teams — Integrated with 50+ Mainstream Frameworks and Designed to
 
 ## 👋🏻 What is SwanLab
 
-SwanLab is an **AI training analytics and metrics observability platform** built for model training teams. It provides **training visualization, automated logging, hyperparameter tracking, experiment comparison, and multi-user collaboration** to help teams diagnose training anomalies early and accelerate model iteration.
+SwanLab is an **AI training analytics and metrics observability platform** built for model training teams. It provides **training visualization, automated logging, hyperparameter tracking, and experiment comparison** to help teams diagnose training anomalies early and accelerate model iteration.
 
-With SwanLab, researchers can spot training bottlenecks through intuitive interactive charts, compare multiple runs side by side to uncover insights, and eliminate team communication silos via **web-based sharing** and **organization-level collaborative workspaces**.
+With SwanLab, researchers can spot training bottlenecks through intuitive interactive charts, compare multiple runs side by side to uncover insights, and keep all run data on local disk for teams to inspect offline.
 
 https://github.com/user-attachments/assets/7965fec4-c8b0-4956-803d-dbf177b44f54
 
@@ -64,7 +63,7 @@ Key features include:
 
 **1. 📊 Experiment Metrics & Hyperparameter Tracking**: Instrument your ML pipeline with minimal code to track and log critical training metrics.
 
-- ☁️ **Cloud-Ready** (similar to Weights & Biases): Monitor training progress anytime, anywhere. [View experiments on mobile](https://docs.swanlab.cn/en/guide_cloud/general/app.html).
+- 💻 **Local-Only**: Experiment data is written to local disk only and viewed through the bundled `swanlab-console`; no cloud service is required.
 
 - 📝 Supports **hyperparameter logging**, **metric summaries**, and **tabular analysis**.
 
@@ -98,11 +97,11 @@ Key features include:
 
 ![](readme_files/swanlab-table.png)
 
-**6. 👥 Team Collaboration**: Train collaboratively by syncing runs in real time under shared team projects, reviewing teammates' experiments, and discussing findings online.
+**6. 👥 Shared Local Viewing**: Keep the `swanlog` directory on shared storage so teammates can start the local console on their own machines and inspect the same runs.
 
-**7. ✉️ Effortless Sharing**: Share persistent URLs for individual runs with collaborators or embed live charts directly into online docs and notebooks.
+**7. ✉️ Data Stays Local**: Runs are written only to the local `swanlog` directory, never to a remote service, making backup and migration straightforward.
 
-**8. 💻 Self-Hosting Support**: Deploy in air-gapped or on-premises environments with the self-hosted Community Edition to view dashboards and manage experiments locally. See the [Self-Hosting Guide](#-self-hosting).
+**8. 💻 Local Console**: The repository ships `swanlab-console` (backend + frontend) for fully offline dashboard viewing and experiment management. See the [local deployment guide](docs/LOCAL_DEPLOYMENT.md).
 
 **9. 🔌 Extensible Plugin Ecosystem**: Extend SwanLab workflows via plugins such as [Lark Notifications](https://docs.swanlab.cn/en/plugin/notification-lark.html), [Slack Notifications](https://docs.swanlab.cn/en/plugin/notification-slack.html), [CSV Logger](https://docs.swanlab.cn/en/plugin/writer-csv.html), and more.
 
@@ -165,36 +164,33 @@ pip install git+https://github.com/SwanHubX/SwanLab.git
 
 </details>
 
-<details><summary>Install Offline Dashboard Extension</summary>
+<details><summary>Local Console (Frontend + Backend)</summary>
 
-[Offline Dashboard Documentation](https://docs.swanlab.cn/en/guide_cloud/offline-board.html)
+This repository ships a fully local console `swanlab-console` that reads the local `swanlog`
+directory. No cloud service is required:
 
 ```bash
-pip install 'swanlab[dashboard]'
+# Terminal 1: backend (http://127.0.0.1:8787 by default)
+cd swanlab-console/backend && npm ci && npm run dev
+
+# Terminal 2: frontend (http://localhost:5173 by default)
+cd swanlab-console/frontend && npm ci && npm run dev
+```
+
+Or use the one-click script from the repository root:
+
+```bash
+bash scripts/start-local.sh
 ```
 
 </details>
 
-### 2. Log In & Configure API Key
-
-1. Sign up for a free account at [SwanLab](https://swanlab.cn).
-
-2. Log in and copy your API Key from **User Settings** > [API Key](https://swanlab.cn/settings).
-
-3. Open your terminal and run:
-
-```bash
-swanlab login
-```
-
-Paste your API Key when prompted and press Enter to complete authentication.
-
-### 3. Integrate SwanLab into Your Training Script
+### 2. Integrate SwanLab into Your Training Script
 
 ```python
 import swanlab
 
-# Initialize a new SwanLab run
+# Initialize a new SwanLab run (local only, data goes to ./swanlog)
 swanlab.init(
     project="my-first-ml",
     config={"learning-rate": 0.003},
@@ -205,21 +201,21 @@ for i in range(10):
     swanlab.log({"loss": i, "acc": i})
 ```
 
-That's it! Head over to [SwanLab](https://swanlab.cn) to inspect your first experiment run.
+Once the script finishes, the run data is written to `swanlog/run-*`; open the local console to inspect it.
 
 <br>
 
-## 💻 Self-Hosting
+## 💻 Local-Only Runtime
 
-The self-hosted Community Edition supports running the SwanLab dashboard in offline or private environments.
+This project is a local-only build. It does not depend on Docker, cloud APIs, cloud databases, or any remote service.
+All experiment data is written to local disk.
 
-![swanlab-kubernetes](./readme_files/swanlab-kubernetes.png)
+- **SDK**: `swanlab.init(mode="offline")` (default) writes to `./swanlog`; `mode="disabled"` disables recording.
+- **Local viewer**: `swanlab-console` backend/frontend read the same `swanlog` directory.
+- **Environment check**: run `bash scripts/check-env.sh` to verify Python / Node versions, dependencies and data directories.
+- **One-click start**: run `bash scripts/start-local.sh` to launch both console frontend and backend.
 
-Deployment guides:
-
-- [🔗 Kubernetes Deployment Guide](https://docs.swanlab.cn/en/self_host/kubernetes/deploy.html)
-- [🔗 Docker Deployment Guide](https://docs.swanlab.cn/en/self_host/docker/deploy.html)
-- [🔗 Migrating from Docker to Kubernetes](https://docs.swanlab.cn/en/self_host/docker/migration-docker-kubernetes.html)
+The data directory can be customized with `SWANLAB_LOGDIR` (SDK) and `SWANLOG_DIR` (console backend).
 
 <br>
 
@@ -415,14 +411,11 @@ Programmatic API:
 
 ### TensorBoard vs. SwanLab
 
-- **☁️ Cloud-Native Sync & Remote Access**:
-  SwanLab syncs and stores training runs in the cloud, making it effortless to monitor progress remotely, manage historical projects, share experiment links, receive real-time alerts, and inspect runs across devices. TensorBoard is strictly a local, offline visualization viewer.
-
-- **👥 Built-In Team Collaboration**:
-  For multi-user, cross-team ML workflows, SwanLab provides shared workspaces to organize team projects, share permanent links, and collaborate on findings. TensorBoard is designed for single-user local inspection and lacks native collaboration features.
+- **🎨 Richer Visualization**:
+  SwanLab supports media logging (images, audio, text, video, 3D point clouds, molecular structures) and custom charts, while TensorBoard focuses mainly on scalar curves.
 
 - **💻 Persistent, Centralized Dashboard**:
-  Whether you train on a local workstation, an on-prem cluster, or public cloud GPU instances, SwanLab aggregates all runs into a single centralized dashboard. With TensorBoard, you have to manually copy and manage `tfevents` files across machines.
+  SwanLab writes each run to a local `swanlog` directory, and the bundled console aggregates all runs under that directory into a single dashboard. With TensorBoard, you have to manually copy and manage `tfevents` files across machines.
 
 - **💪 Scalable Tabular Analytics**:
   SwanLab's interactive tables let you view, search, sort, and filter metrics and hyperparameters across thousands of model runs to quickly identify top-performing checkpoints. TensorBoard struggles to scale to large numbers of runs.
@@ -431,7 +424,7 @@ Programmatic API:
 
 - **Weights & Biases** is a proprietary, closed-source MLOps platform that requires cloud connectivity or paid enterprise licensing.
 
-- **SwanLab** offers both a full-featured cloud service and an **open-source, free, self-hosted edition** suitable for air-gapped and private infrastructure.
+- **SwanLab** is fully open-source and runs offline; experiment data stays on local disk by default.
 
 <br>
 
@@ -439,9 +432,7 @@ Programmatic API:
 
 ### Related Repositories
 
-- [self-hosted](https://github.com/swanhubx/self-hosted): Deployment scripts and configurations for self-hosted SwanLab.
 - [SwanLab-Docs](https://github.com/swanhubx/swanlab-docs): Official documentation source repository.
-- [SwanLab-Dashboard](https://github.com/swanhubx/swanlab-dashboard): Web frontend for the lightweight offline dashboard launched via `swanlab watch`.
 
 ### Community & Support
 
@@ -553,5 +544,3 @@ This repository is licensed under the [Apache 2.0 License](https://github.com/Sw
 [tracking-swanlab-shield]: https://raw.githubusercontent.com/SwanHubX/assets/main/badge2.svg
 [visualize-swanlab-shield-link]: https://swanlab.cn
 [visualize-swanlab-shield]: https://raw.githubusercontent.com/SwanHubX/assets/main/badge1.svg
-[dockerhub-shield]: https://img.shields.io/docker/v/swanlab/swanlab-next?color=369eff&label=docker&labelColor=black&logoColor=white&style=flat-square
-[dockerhub-link]: https://hub.docker.com/r/swanlab/swanlab-next/tags

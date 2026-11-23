@@ -2,7 +2,9 @@
 @author: caddiesnew
 @file: __init__.py
 @time: 2026/4/1 16:10
-@description: CLI Mode 模块：设置默认运行模式 (disabled / local / online / offline)
+@description: CLI Mode 模块：设置默认运行模式 (disabled / offline)
+
+纯本地版本，不提供任何云端同步模式。
 """
 
 import click
@@ -41,32 +43,6 @@ def disabled(local: bool):
 
 # noinspection PyShadowingNames
 @click.command()
-@click.option("--local", is_flag=True, help="Only set local mode for current directory.")
-def local(local: bool):
-    """Use local mode for SwanLab."""
-    _save_settings(settings=Settings(mode="local"), local=local)
-
-    if local:
-        console.info("SwanLab local. Running your script from this directory will save data locally only.")
-    else:
-        console.info("SwanLab local. Running your script will save data locally only.")
-
-
-# noinspection PyShadowingNames
-@click.command()
-@click.option("--local", is_flag=True, help="Only set online mode for current directory.")
-def online(local: bool):
-    """Use online mode for SwanLab."""
-    _save_settings(settings=Settings(mode="online"), local=local)
-
-    if local:
-        console.info("SwanLab online. Running your script from this directory will now sync to the cloud.")
-    else:
-        console.info("SwanLab online. Running your script will now sync to the cloud.")
-
-
-# noinspection PyShadowingNames
-@click.command()
 @click.option("--local", is_flag=True, help="Only set offline mode for current directory.")
 def offline(local: bool):
     """Use offline mode for SwanLab."""
@@ -84,4 +60,4 @@ def offline(local: bool):
         )
 
 
-__all__ = ["disabled", "local", "online", "offline"]
+__all__ = ["disabled", "offline"]

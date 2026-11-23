@@ -19,8 +19,6 @@ def test_e2e_legacy_env_compatibility(monkeypatch):
         "SWANLAB_TAGS": "tag1, tag2",
         "SWANLAB_WEBHOOK": "https://hook.com",
         "SWANLAB_WEBHOOK_VALUE": "ping",
-        "SWANLAB_DASHBOARD_HOST": "0.0.0.0",
-        "SWANLAB_DASHBOARD_PORT": "9090",
         "SWANLAB_SAVE_DIR": "/tmp/swanlab",
     }
     for k, v in envs.items():
@@ -38,8 +36,6 @@ def test_e2e_legacy_env_compatibility(monkeypatch):
     # 验证 integration 子模块的兼容映射
     assert s.integration.webhook.url == "https://hook.com"
     assert s.integration.webhook.value == "ping"
-    assert s.integration.dashboard.host == "0.0.0.0"
-    assert s.integration.dashboard.port == 9090
 
 
 def test_e2e_explicit_input_priority(monkeypatch):

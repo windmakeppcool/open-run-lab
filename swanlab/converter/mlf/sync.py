@@ -6,13 +6,13 @@ from swanlab.converter.helper import extract_args
 from swanlab.sdk.typings.run import ModeType
 
 
-def sync_mlflow(mode: ModeType = "online") -> None:
+def sync_mlflow(mode: ModeType = "offline") -> None:
     """Monkey-patch mlflow to forward logs to SwanLab.
 
     Call before any mlflow API usage.
 
     Args:
-        mode: SwanLab mode — online | local | offline | disabled.
+        mode: SwanLab mode — offline | disabled.
 
     Example::
 

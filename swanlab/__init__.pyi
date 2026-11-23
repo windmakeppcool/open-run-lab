@@ -11,7 +11,6 @@ from pathlib import Path
 from typing import Any, Callable, List, Mapping, Optional, Sequence, Union
 
 from . import utils
-from .api import Api
 from .sdk import (
     Audio,
     Callback,
@@ -28,15 +27,13 @@ from .sdk import (
     config,
     echarts,
     plot,
-    sync,
 )
-from .sdk.typings.cmd import ConfigLike, LoginType
+from .sdk.typings.cmd import ConfigLike
 from .sdk.typings.context import CallbacksType
 from .sdk.typings.run import (
     AsyncLogType,
     FinishType,
     ModeType,
-    OnlineErrorPolicy,
     ParallelType,
     ResumeType,
     SaveType,
@@ -61,7 +58,6 @@ __all__ = [
     "require",
     "init",
     "finish",
-    "login",
     "log",
     "log_text",
     "log_image",
@@ -75,7 +71,6 @@ __all__ = [
     "define_metric",
     "async_log",
     "save",
-    "sync",
     # run
     "run",  # type: ignore [no-redef]
     "Run",
@@ -99,8 +94,6 @@ __all__ = [
     "utils",
     "Settings",
     "Callback",
-    # Api
-    "Api",
     # sync patches
     "sync_wandb",
     "sync_tensorboardX",
@@ -115,7 +108,6 @@ def init(
     reinit: Optional[bool] = None,
     log_dir: Optional[str] = None,
     mode: Optional[ModeType] = None,
-    on_online_error: Optional[OnlineErrorPolicy] = None,
     workspace: Optional[str] = None,
     project: Optional[str] = None,
     public: Optional[bool] = None,
@@ -141,22 +133,18 @@ def init(
 
     :param reinit: If True, finish the current run before starting a new one. Defaults to False.
     :param log_dir: Directory to store logs. Defaults to "./swanlog".
-    :param mode: Run mode. Options: "online" (sync to cloud), "local" (local only),
-        "offline" (save locally for later sync), "disabled" (no logging). Defaults to "online".
-    :param on_online_error: Behavior when SwanLab Cloud is temporarily unreachable in online
-        mode. Only transient connection/server failures are degraded; authentication and
-        configuration errors always raise. Options: "offline" (save locally and sync later),
-        "disabled" (no logging), "raise". Defaults to "offline".
+    :param mode: Run mode. Options: "offline" (将数据写入本地 swanlog 目录),
+        "disabled" (no logging). Defaults to "offline".
     :param workspace: Workspace or organization name. Defaults to current user.
     :param project: Project name. Defaults to current directory name.
-    :param public: Make project publicly visible (online mode only). Defaults to False.
+    :param public: 保留参数，纯本地模式下不生效。Defaults to False.
     :param name: Experiment name. Auto-generated if not provided.
     :param color: Experiment color for visualization. Auto-generated if not provided.
     :param description: Experiment description.
     :param job_type: Job type label (e.g., "train", "eval").
     :param group: Group name for organizing related experiments.
     :param tags: List of tags for categorizing experiments.
-    :param id: Run ID for resuming a previous run (online mode only).
+    :param id: 指定本次 run 的 id。
     :param resume: Resume behavior. Options: "must" (must resume), "allow" (resume if exists),
         "never" (always create new). Defaults to "never".
     :param parallel: Parallel execution policy. Options: "none", "shared".
@@ -166,13 +154,7 @@ def init(
 
     :return: The initialized Run object.
 
-    :raises RuntimeError: If a run is already active and reinit=False, or if an online
-        startup fails and is not degraded (a non-transient error, or a transient error
-        when ``on_online_error="raise"``).
-    :raises AuthenticationError: If SwanLab Cloud rejects the API key during login or
-        startup, or if the initial login fails with a non-transient error. With
-        ``on_online_error="raise"`` any login failure is wrapped as
-        ``AuthenticationError`` with the original exception in ``__cause__``.
+    :raises RuntimeError: If a run is already active and reinit=False, or if startup fails.
 
     Examples:
 
@@ -183,12 +165,11 @@ def init(
         >>> swanlab.log({"loss": 0.5})
         >>> swanlab.finish()
 
-        Cloud run with configuration:
+        Run with configuration:
 
         >>> import swanlab
-        >>> swanlab.login(api_key="your_key")
         >>> swanlab.init(
-        ...     mode="online",
+        ...     mode="offline",
         ...     project="image_classification",
         ...     name="resnet50_experiment",
         ...     config={"lr": 0.001, "batch_size": 32}
@@ -234,46 +215,6 @@ def finish(
     """
     ...
 
-def login(
-    api_key: Optional[str] = None,
-    relogin: bool = False,
-    host: Optional[str] = None,
-    save: LoginType = False,
-    timeout: int = 10,
-) -> bool:
-    """Authenticate with SwanLab Cloud.
-
-    This function authenticates your environment with SwanLab. If already logged in
-    and `relogin` is False, this function does nothing. Call this before `swanlab.init()`
-    to use cloud features.
-
-    :param api_key: Your SwanLab API key. If not provided, will attempt to read from
-        environment or prompt for input.
-    :param relogin: If True, forces re-authentication and overwrites existing credentials.
-        Defaults to False.
-    :param host: Custom API host URL. If not provided, uses the default SwanLab cloud host.
-    :param save: Whether to save the API key locally for future sessions. Defaults to False.
-    :param timeout: Network request timeout in seconds. Defaults to 10.
-    :return: True if login was successful, False otherwise.
-    :raises RuntimeError: If called while a run is active.
-    :raises AuthenticationError: If login fails due to invalid credentials, network issues,
-        or server errors. The original exception is available via ``__cause__``.
-
-    Examples:
-
-        Login with an API key:
-
-        >>> import swanlab
-        >>> swanlab.login(api_key="your_api_key_here")
-        >>> swanlab.init(mode="online")
-
-        Force re-login and save credentials:
-
-        >>> import swanlab
-        >>> swanlab.login(api_key="new_api_key", relogin=True, save=True)
-    """
-    ...
-
 def merge_settings(settings: Union[Settings, dict]) -> None:
     """Merge custom settings into the global SwanLab configuration.
 
@@ -286,7 +227,7 @@ def merge_settings(settings: Union[Settings, dict]) -> None:
     Examples:
 
         >>> import swanlab
-        >>> swanlab.merge_settings({"mode": "local", "log_dir": "./my_logs"})
+        >>> swanlab.merge_settings({"mode": "offline", "log_dir": "./my_logs"})
         >>> swanlab.init()
     """
     ...
@@ -817,7 +758,7 @@ def save(
 # ── sync patches ────────────────────────────────────────────────────────────────
 
 def sync_wandb(
-    mode: ModeType = "online",
+    mode: ModeType = "offline",
     wandb_run: bool = True,
     workspace: Optional[str] = None,
     log_dir: Optional[str] = None,
@@ -829,7 +770,7 @@ def sync_wandb(
     is forwarded to the corresponding SwanLab API.  The original wandb behaviour
     is preserved — data is sent to both backends simultaneously.
 
-    :param mode: SwanLab run mode — ``"online"`` | ``"local"`` | ``"offline"`` | ``"disabled"``.
+    :param mode: SwanLab run mode — ``"offline"`` | ``"disabled"``.
     :param wandb_run: If ``False``, wandb is forced into offline mode so it does
         not upload to its own cloud.  SwanLab still receives the data. Defaults to ``True``.
     :param workspace: SwanLab workspace (organization) name. Defaults to the current user.
@@ -909,7 +850,7 @@ def sync_tensorboard_torch(types: Optional[Sequence[str]] = None) -> None:
     """
     ...
 
-def sync_mlflow(mode: ModeType = "online") -> None:
+def sync_mlflow(mode: ModeType = "offline") -> None:
     """Monkey-patch mlflow to forward logs to SwanLab.
 
     Call before any mlflow API usage. Intercepts ``mlflow.set_experiment``,
@@ -917,7 +858,7 @@ def sync_mlflow(mode: ModeType = "online") -> None:
     ``mlflow.log_metric(s)`` and mirrors the data into SwanLab.
 
     Args:
-        mode: SwanLab run mode. Defaults to ``"online"``.
+        mode: SwanLab run mode. Defaults to ``"offline"``.
 
     Example::
 

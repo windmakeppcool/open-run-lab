@@ -59,7 +59,7 @@ dependencies = [
     "pyroaring>=1.0.4; python_version >= '3.14'",
 ]
 
-# 对应 requirements-media.txt 和 requirements-dashboard.txt [cite: 3, 5]
+# 对应 requirements-media.txt [cite: 3]
 [project.optional-dependencies]
 media = [
     "soundfile",
@@ -70,12 +70,6 @@ media = [
     "imageio[ffmpeg]",
     "rdkit>=2025.9.6; python_version > '3.9'",
     "rdkit<=2023.9.6; python_version == '3.9'",
-]
-dashboard = [
-    "swanboard==0.1.10b2",
-]
-s3 = [
-    "boto3>=1.35.49",
 ]
 
 [dependency-groups]

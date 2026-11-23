@@ -7,7 +7,7 @@ Usage::
 
     wb = WandbConverter(
         project="my-project",   # optional SwanLab project name
-        mode="online",          # online | local | offline | disabled
+        mode="offline",         # offline | disabled
     )
     wb.run(wb_project="WANDB_PROJECT", wb_entity="WANDB_ENTITY")
 

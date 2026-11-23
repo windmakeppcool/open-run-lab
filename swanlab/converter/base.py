@@ -7,7 +7,7 @@ class BaseConverter(ABC):
         self,
         project: Optional[str] = None,
         workspace: Optional[str] = None,
-        mode: str = "online",
+        mode: str = "offline",
         log_dir: Optional[str] = None,
         logdir: Optional[str] = None,
         tags: Optional[List[str]] = None,

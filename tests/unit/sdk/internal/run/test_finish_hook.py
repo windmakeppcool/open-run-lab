@@ -47,7 +47,7 @@ def _make_real_finish_run() -> Run:
     run._init_pid = fork.current_pid()
     run._state = "running"
     run._api_lock = threading.RLock()
-    run.__dict__["mode"] = "online"
+    run.__dict__["mode"] = "offline"
     run._ctx = MagicMock()
     run._components = MagicMock()
     run._probe = MagicMock()
@@ -78,7 +78,7 @@ class TestAtexitCleanup:
 
 class TestFinish:
     @pytest.mark.parametrize("pending", [False, True], ids=["drained", "retained"])
-    def test_online_finish_uses_run_with_progress(self, pending):
+    def test_finish_uses_run_with_progress(self, pending):
         run = _make_real_finish_run()
 
         with (

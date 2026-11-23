@@ -20,7 +20,6 @@ from swanlab.proto.swanlab.metric.data.v1.data_pb2 import ScalarRecord
 from swanlab.sdk.internal.core_python.context import CoreContext
 from swanlab.sdk.internal.core_python.pkg import builder
 from swanlab.sdk.internal.pkg import console, helper
-from swanlab.sdk.typings.core_python.api.experiment import ResumeExperimentSummaryType
 
 __all__ = ["RunMetrics"]
 
@@ -153,10 +152,12 @@ class RunMetrics:
     _metrics: Dict[str, Union[ScalarMetric, MediaMetric, HistogramMetric]] = field(default_factory=dict)
 
     @classmethod
-    def new(cls, data: Optional[ResumeExperimentSummaryType], ctx: CoreContext) -> Tuple["RunMetrics", int, int, int]:
+    def new(cls, data: Optional[Any], ctx: CoreContext) -> Tuple["RunMetrics", int, int, int]:
         """
-        根据后端返回的实验摘要，生成 RunMetrics 对象
-        :param data: 后端返回的实验摘要
+        根据实验摘要，生成 RunMetrics 对象
+
+        纯本地模式下 data 恒为 None，保留该参数以维持调用方接口稳定。
+        :param data: 实验摘要
         :param ctx: 运行上下文
         :return: RunMetrics 对象, 起始步数
         """

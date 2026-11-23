@@ -6,15 +6,7 @@
 """
 
 import os
-from typing import Any, Dict, Literal, Union
-
-LoginType = Union[bool, Literal["local", "root"]]
-"""
-登录类型
-- `False`: 不保存登录信息
-- `True` 或 `"root"`: 保存到用户目录下的 `.swanlab` 目录中
-- `"local"`: 保存到当前目录下的 `.swanlab` 目录中
-"""
+from typing import Any, Dict, Union
 
 ConfigLike = Union[Dict[str, Any], str, os.PathLike]
 """

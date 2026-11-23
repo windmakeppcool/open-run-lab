@@ -32,18 +32,15 @@ from swanlab.sdk import (
     log_object3d,
     log_text,
     log_video,
-    login,
     merge_callbacks,
     merge_settings,
     pkg,
     plot,
     require,
     save,
-    sync,
 )
 
 from . import utils
-from .api import Api
 from .deprecated.callbacks import register_callbacks
 from .deprecated.echarts import confusion_matrix, pr_curve, roc_curve
 
@@ -56,7 +53,6 @@ __all__ = [
     "require",
     "init",
     "finish",
-    "login",
     "log",
     "log_text",
     "log_image",
@@ -70,7 +66,6 @@ __all__ = [
     "define_metric",
     "save",
     "async_log",
-    "sync",
     # run
     "run",  # type: ignore [no-redef]
     "Run",
@@ -94,8 +89,6 @@ __all__ = [
     "utils",
     "Settings",
     "Callback",
-    # Api
-    "Api",
     # deprecated
     "roc_curve",
     "pr_curve",

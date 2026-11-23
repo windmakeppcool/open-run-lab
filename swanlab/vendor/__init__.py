@@ -15,7 +15,6 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     import accelerate
     import accelerate.tracking
-    import boto3
     import fastai
     import fastai.learner
     import fastcore
@@ -49,7 +48,6 @@ if TYPE_CHECKING:
     import soundfile
     import stable_baselines3
     import stable_baselines3.common
-    import swanboard
     import tensorboard
     import tensorboard.backend.event_processing
     import tensorboard.util
@@ -75,10 +73,8 @@ __all__ = [
     "rdkit",
     "sklearn",
     "soundfile",
-    "swanboard",
     "tensorboard",
     "tensorboardX",
-    "boto3",
     "torch",
     "torchvision",
     "pynvml",
@@ -111,7 +107,6 @@ _LAZY_IMPORTS = {
     "rdkit": "rdkit",
     "sklearn": "sklearn",
     "soundfile": "soundfile",
-    "swanboard": "swanboard",
     "tensorboard": "tensorboard",
     "tensorboardX": "tensorboardX",
     "boto3": "boto3",
@@ -148,10 +143,6 @@ _EXTRA_DEPS = {
     "moviepy": "media",
     "imageio": "media",
     "rdkit": "media",
-    # [project.optional-dependencies.dashboard]
-    "swanboard": "dashboard",
-    # [project.optional-dependencies.s3]
-    "boto3": "s3",
 }
 
 # 5. Submodule imports: some packages require submodules to be imported explicitly

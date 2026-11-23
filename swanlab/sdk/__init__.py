@@ -9,7 +9,6 @@ from swanlab.sdk.internal.run.components.config import config
 
 from .cmd import utils as cmd_utils
 from .cmd.init import init
-from .cmd.login import login, login_cli
 from .cmd.merge_callbacks import merge_callbacks
 from .cmd.merge_settings import merge_settings
 from .cmd.require import require
@@ -29,7 +28,6 @@ from .cmd.run import (
     log_video,
     save,
 )
-from .cmd.sync import build_sync_range, sync
 from .internal import impl, pkg
 from .internal.run import Run, clear_run, get_run, has_run, set_run
 from .internal.run.transforms import (
@@ -52,8 +50,6 @@ __all__ = [
     # cmd
     "init",
     "finish",
-    "login",
-    "login_cli",
     "log",
     "log_text",
     "log_image",
@@ -67,8 +63,6 @@ __all__ = [
     "async_log",
     "define_metric",
     "save",
-    "sync",
-    "build_sync_range",
     "merge_settings",
     "merge_callbacks",
     "require",

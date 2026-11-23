@@ -9,7 +9,7 @@
 - ``env``: 引号剥离与读取工具
 - ``experiment``: 实验域（SWANLAB_PROJ_NAME/SWANLAB_WORKSPACE/SWANLAB_EXP_NAME 等）
 - ``core``: Core 域（SWANLAB_SECTION_RULE_IDX）
-- ``integration``: 集成域（SWANLAB_WEBHOOK/SWANLAB_DASHBOARD_* 等）
+- ``integration``: 集成域（SWANLAB_WEBHOOK* 等）
 """
 
 from pathlib import Path
@@ -31,16 +31,12 @@ from .experiment import (
     workspace_factory,
 )
 from .integration import (
-    dashboard_host_factory,
-    dashboard_port_factory,
     webhook_timeout_factory,
     webhook_url_factory,
     webhook_value_factory,
 )
 
 __all__ = [
-    "dashboard_host_factory",
-    "dashboard_port_factory",
     "experiment_color_factory",
     "experiment_description_factory",
     "experiment_group_factory",

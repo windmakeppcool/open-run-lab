@@ -8,7 +8,7 @@ from swanlab.sdk.typings.run import ModeType
 
 
 def sync_wandb(
-    mode: ModeType = "online",
+    mode: ModeType = "offline",
     wandb_run: bool = True,
     workspace: Optional[str] = None,
     log_dir: Optional[str] = None,
@@ -18,7 +18,7 @@ def sync_wandb(
     在调用 ``wandb.init()`` 之前调用此函数。
 
     Args:
-        mode: SwanLab mode — online | local | offline | disabled
+        mode: SwanLab mode — offline | disabled
         wandb_run: False 时将 wandb 设为 offline（不实际上传 wandb）
         workspace: SwanLab workspace
         log_dir: SwanLab 日志目录

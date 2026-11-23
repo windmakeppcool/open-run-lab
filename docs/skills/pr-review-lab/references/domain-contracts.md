@@ -19,44 +19,40 @@
 适用路径：`swanlab/sdk/cmd/**`、`swanlab/sdk/internal/run/**`、`swanlab/sdk/internal/context/**`、`swanlab/sdk/internal/bus/**`、`swanlab/sdk/internal/impl.py`。
 
 - `init`、`log`、`finish` 和 reinit 的状态转换清晰，失败路径不会遗留半初始化的全局状态。
-- `online`、`offline`、`local`、`disabled` 四种模式保持各自边界；disabled 模式不应产生不必要的网络或文件副作用。
+- `offline`、`disabled` 两种模式保持各自边界；disabled 模式不应产生不必要的文件副作用。
 - 运行时组件按依赖顺序启动、按反向顺序停止；停止时先完成异步任务和末尾事件，再关闭消费者。
 - terminal proxy、后台线程、executor、watcher、signal 和 atexit hook 都有确定的安装与清理路径。
 - 主线程、非主线程、fork/spawn、异常退出和重复 finish 场景不能死锁、重复上传或丢失数据。
 - 修改全局或上下文状态时检查多线程和 asyncio 隔离。
 
-## Record、Core 与传输
+## Record、Core 与本地存储
 
-适用路径：`swanlab/sdk/internal/core_python/**`、`transport/**`、`store/**`、Record builder 和 consumer。
+适用路径：`swanlab/sdk/internal/core_python/**`、`store/**`、Record builder 和 consumer。
 
-- Record 保持可顺序写入、读取、重放和断点续传；序号、批次和完成状态不能倒退或重复计数。
+- Record 保持可顺序写入、读取和重放；序号、批次和完成状态不能倒退或重复计数。
 - scalar、media、column、config、log、save 和生命周期记录的转换链路保持完整。
-- 上传重试责任不能在多层重复：上传 API 使用既定请求策略，sender 决定可重试错误，transport 负责批次重试。
-- 当前契约中 5xx/基础设施错误应允许 transport 重试，4xx 业务拒绝不应无界重试；不能用宽泛异常吞掉需要上抛的错误。
-- 成功、部分失败和最终失败时，tracker、buffer、落盘状态与实际上传结果一致。
-- 批处理、队列和并发上传应有边界，避免大数据量下无界内存、忙等、锁竞争或线程泄漏。
-- 文件与媒体上传检查 Windows/POSIX 路径、跨机器 sync、重复上传和幂等行为。
+- 所有记录只写入本地 store，不引入网络上传、远程重试或云端队列逻辑。
+- 成功、部分失败和最终失败时，buffer、落盘状态与返回结果保持一致。
+- 批处理、队列和并发写入应有边界，避免大数据量下无界内存、忙等、锁竞争或线程泄漏。
+- 文件与媒体写入检查 Windows/POSIX 路径、符号链接逃逸、重复写入和幂等行为。
 
-## 配置、认证与 HTTP 客户端
+## 配置与 Settings
 
-适用路径：`swanlab/sdk/internal/settings/**`、`swanlab/sdk/internal/pkg/client/**`、`swanlab/sdk/internal/pkg/nrc/**`、`swanlab/sdk/internal/core_python/client/**`、`swanlab/sdk/internal/core_python/api/**`。
+适用路径：`swanlab/sdk/internal/settings/**`。
 
 - 保持 Settings 声明的配置源优先级；有意调整时同步兼容测试和用户文档。
-- Settings 负责类型、格式和默认值；目录创建、网络请求等业务副作用留在初始化阶段。
+- Settings 负责类型、格式和默认值；目录创建等业务副作用留在初始化阶段。
 - `merge_settings` 只合并用户显式设置字段，嵌套配置不能被意外整块覆盖。
-- API host、web host、环境变量、YAML、Secret 和 netrc 的回退关系明确，切换 host 时不能复用错误凭据。
-- HTTP 请求设置合理的 timeout、retry 和错误映射；请求级上下文在成功和异常后都要恢复。
-- 日志和异常不能暴露 API key、认证 token、cookie、presigned URL 或完整敏感响应。
+- 环境变量、YAML 和 Secret 文件的回退关系明确；不引入 API host、API key、netrc 或远程认证配置。
+- 日志和异常不能暴露 Secret 或用户敏感配置。
 
-## Public API 与 CLI
+## CLI
 
-适用路径：`swanlab/api/**`、`swanlab/cli/**`。
+适用路径：`swanlab/cli/**`、`swanlab/sdk/cmd/**`。
 
-- API 输入校验、分页、迭代器、空值、过滤条件和错误类型保持稳定。
-- API 与 CLI 复用统一的客户端、host 和认证逻辑，不在命令中复制请求实现。
+- 只支持 offline/disabled 两种模式；不提供 login、logout、verify、sync、ping、api、watch 等命令。
 - CLI 的参数名、别名、默认值、帮助文本、输出和退出码保持兼容。
-- 非交互环境不能意外等待输入；密码和 API key 输入不得明文回显。
-- self-hosted 与默认云端地址的请求和展示链接不能混用。
+- 非交互环境不能意外等待输入；命令输出中的实验位置指向本地 `swanlog` 目录。
 
 ## 媒体、转换与文件
 
@@ -64,10 +60,10 @@
 
 - Image、Audio、Video、Text、Html、ECharts、Object3D、Molecule 的输入类型、输出文件和 Record 元数据一致。
 - 可选依赖应按需加载；未安装媒体或框架依赖时不能影响基础 `import swanlab`。
-- 文件名、扩展名、MIME、大小、hash、caption 和 step 在转换与上传链路中不丢失。
+- 文件名、扩展名、MIME、大小、hash、caption 和 step 在转换与本地写入链路中不丢失。
 - 文件句柄、临时文件、watcher、线程和大对象有释放路径。
-- 大文件和批量媒体避免一次性读入内存，并遵守上传大小、分片和批次限制。
-- `save` 的 glob、base path、符号链接和跨平台路径不能越过预期边界或上传错误文件。
+- 大文件和批量媒体避免一次性读入内存，并遵守本地存储的大小、分片和批次限制。
+- `save` 的 glob、base path、符号链接和跨平台路径不能越过预期边界或写入错误文件。
 
 ## 硬件与环境探测
 
@@ -76,7 +72,7 @@
 - 第三方厂商 SDK、驱动或命令行工具缺失时降级为“不可用”，不能让 `import swanlab` 或 `init` 失败。
 - 厂商探测按已有约定判定可用性；探测失败、超时和权限不足都走统一的失败路径，不打断 Run。
 - 监控线程有明确的启动、采样间隔和停止路径；Run finish 后不残留线程或子进程。
-- 采集结果的字段名、单位和数据类型保持稳定，避免破坏云端已有的硬件面板。
+- 采集结果的字段名、单位和数据类型保持稳定，避免破坏本地控制台已有的硬件面板。
 - 探测调用外部命令时限制超时、不拼接不可信输入，且不在日志中输出完整命令输出。
 - 环境采集（git、conda、requirements、runtime）只收集产品需要的信息；参见“安全与隐私”。
 - 探测层直接调用 Core，不经事件总线；改动时确认写入时机仍在 Run 就绪之后。
@@ -129,7 +125,7 @@
 适用路径：`tests/**`、pytest 配置和 CI workflow。
 
 - 行为变更应在对应 `tests/unit` 路径增加回归测试，测试目录与源码模块尽量对应。
-- 默认使用 mock、`tmp_path` 和 disabled/local 模式隔离真实网络、用户凭据和全局文件。
+- 默认使用 mock、`tmp_path` 和 disabled/offline 模式隔离真实网络、用户凭据和全局文件。
 - 生命周期、并发、重试、跨平台路径和兼容性变更同时覆盖成功与失败路径。
 - 测试清理全局 Settings、Run、环境变量、线程、patch 和文件，避免依赖执行顺序。
 - 本地验证结果不能替代 CI 的操作系统和 Python 版本矩阵。
@@ -150,9 +146,9 @@
 
 适用条件：凭据、认证、网络、日志、HTML、文件路径、上传、环境探测或用户数据发生变化。
 
-- API key、token、cookie、密码和 Secret 不写入日志、异常、测试快照或上传元数据。
-- netrc、配置文件和 Secret 文件遵守最小权限，不能写入错误用户目录或意外覆盖其他 host 凭据。
-- 自定义 host、webhook 和外部 URL 检查协议、凭据发送范围、重定向和 SSRF 风险。
-- HTML、终端日志、配置和第三方框架数据视为不可信输入，上传或展示前保持明确的安全边界。
-- `save`、sync 和解压/复制逻辑防止路径穿越、符号链接逃逸和任意文件覆盖。
-- 环境与硬件探测只采集产品需要的数据，不上传本地敏感路径、环境变量值或用户私有内容。
+- Secret 和密码不写入日志、异常或测试快照。
+- 配置文件和 Secret 文件遵守最小权限，不能写入错误用户目录。
+- 自定义 webhook 和外部 URL 检查协议、凭据发送范围、重定向和 SSRF 风险。
+- HTML、终端日志、配置和第三方框架数据视为不可信输入，在本机展示前保持明确的安全边界。
+- `save` 和解压/复制逻辑防止路径穿越、符号链接逃逸和任意文件覆盖。
+- 环境与硬件探测只采集产品需要的数据，不写入本地敏感路径、环境变量值或用户私有内容。

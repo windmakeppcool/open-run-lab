@@ -4,7 +4,7 @@
 @time: 2026/9/11
 @description: core.skip_store 本地持久化开销基准测试
 
-对比 online mode 落盘（skip_store=False）与完全跳过持久化（skip_store=True）
+对比 offline mode 落盘（skip_store=False）与完全跳过持久化（skip_store=True）
 在相同写入负载下的性能，量化“跳过 protobuf 序列化 + 本地落盘”带来的收益。
 
 负载规模与 bench_metrics_steps.py 对齐：200 key × 5000 step
@@ -172,7 +172,7 @@ def _make_core(root: Path, skip_store: bool, tag: str) -> CorePython:
     """构造仅用于持久化路径的 CorePython（不启动 transport / heartbeat）。"""
     run_dir = root / f"{tag}-skip={skip_store}"
     run_dir.mkdir(parents=True)
-    core = CorePython(mode="online")
+    core = CorePython(mode="offline")
     core._ctx = CoreContext(
         config=CoreConfig(
             run_id=f"bench-{tag}",

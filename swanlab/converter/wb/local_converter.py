@@ -38,7 +38,7 @@ class WandbLocalConverter(BaseConverter):
         self,
         project: Optional[str] = None,
         workspace: Optional[str] = None,
-        mode: str = "online",
+        mode: str = "offline",
         log_dir: Optional[str] = None,
         logdir: Optional[str] = None,
         tags: Optional[List[str]] = None,
@@ -163,7 +163,6 @@ class WandbLocalConverter(BaseConverter):
                 run_metadata["name"] = run_metadata["id"]
 
             print(f"Converting run: {run_metadata['name']} (ID: {run_metadata['id']})")
-            swanlab.login(relogin=True)
             swanlab_run = swanlab.init(
                 project=self.project or run_metadata["project"] or "wandb-imports",
                 workspace=self.workspace,

@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from rich.text import Text
 
 from swanlab.sdk.internal.context import RunContext
-from swanlab.sdk.internal.pkg import console, fs
+from swanlab.sdk.internal.pkg import console
 from swanlab.sdk.internal.pkg.helper.version import get_swanlab_version
 
 if TYPE_CHECKING:
@@ -25,81 +25,39 @@ def _print_version():
 
 
 def _print_save_dir(ctx: RunContext):
-    # skip_store 仅 online 模式合法，此时本地不再创建 swanlog 日志目录，所有数据只传云端.
+    # skip_store 下本地不再创建 swanlog 日志目录，所有数据都不会落盘
     if ctx.config.settings.core.skip_store:
-        console.info("⚠️ ", Text("Local record store disabled; data will be uploaded to cloud only", "yellow"))
+        console.info("⚠️ ", Text("Local record store disabled; no data will be saved", "yellow"))
         return
     console.info("💾 Run data saved at", Text(str(ctx.config.run_dir), "magenta bold"))
 
 
-def _print_online_tip(run: "Run"):
-    project_url = run.url.split("/runs/")[0]
-    console.info("📁 View project at", Text(project_url, style=f"link {project_url} blue underline"))
-    # 截断 run.name，超过 name_truncate_len 时，前后保留 20 个字符，中间显示 ...
-    console.info(
-        "🚀 View run",
-        Text(fs.safe_truncate(run.name, max_length=45)[0], "yellow"),
-        "at",
-        Text(run.url, style=f"link {run.url} blue underline"),
-    )
-
-
-def _print_local_tip(ctx: RunContext):
-    console.info(
-        "🌟 Run",
-        Text(f"`swanlab watch {str(ctx.config.settings.log_dir)}`", "bold"),
-        "to view SwanLab Experiment Dashboard",
-    )
-
-
 def _print_offline_tip(ctx: RunContext):
     console.info(
-        "⚡️ Run",
-        Text(f"`swanlab sync {str(ctx.config.run_dir)}`", "bold"),
-        "to sync this run",
+        "📊 Run",
+        Text("`swanlab-console`", "bold"),
+        "to view this run, see docs/LOCAL_DEPLOYMENT.md for local startup instructions.",
     )
 
 
 def welcome(ctx: RunContext, run: "Run"):
     """
-    实验开始欢迎语，根据不同模式选择不同的欢迎语
+    实验开始欢迎语
     0. Disabled: 直接返回
-    1. Online: 打印版本号、运行日志存储位置、实验名称、项目、实验的URL，并单独开启线程检查新版本
-    2. Local: 打印版本号、运行日志存储位置、watch命令
-    3. Offline: 答应版本号、运行日志存储位置、实验名称、sync命令
+    1. Offline: 打印版本号、运行日志存储位置
     """
+    _ = run
     mode = ctx.config.settings.mode
-    # 0. Disabled
     if mode == "disabled":
         return
-    # 1. Online
-    elif mode == "online":
-        _print_version()
-        _print_save_dir(ctx)
-        _print_online_tip(run)
-    # 2. Local
-    elif mode == "local":
-        _print_version()
-        _print_save_dir(ctx)
-        _print_local_tip(ctx)
-    # 3. Offline
-    elif mode == "offline":
-        _print_version()
-        _print_save_dir(ctx)
-        _print_offline_tip(ctx)
+    _print_version()
+    _print_save_dir(ctx)
+    _print_offline_tip(ctx)
 
 
 def goodbye(ctx: RunContext, run: "Run"):
+    _ = run
     mode = ctx.config.settings.mode
-    # 0. Disabled
     if mode == "disabled":
         return
-    # 1. Online
-    elif mode == "online":
-        _print_online_tip(run)
-    # 2. Local
-    elif mode == "local":
-        _print_local_tip(ctx)
-    # 3. Offline
-    elif mode == "offline":
-        _print_offline_tip(ctx)
+    _print_offline_tip(ctx)

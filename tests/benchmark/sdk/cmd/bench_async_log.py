@@ -136,11 +136,11 @@ def run_worker(
         if mode != "no_sdk":
             import swanlab
 
-            # 统一使用 local 模式排除网络波动，设置 log_level 减少控制台干扰
+            # 统一使用 offline 模式排除网络波动，设置 log_level 减少控制台干扰
             swanlab.init(
                 project="benchmarks",
                 experiment_name=f"bench_{mode}_{num_keys}k_{test_type}",
-                mode="local",
+                mode="offline",
                 log_level="warning",
                 log_dir=tmp_log_dir,
             )

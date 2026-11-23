@@ -24,7 +24,7 @@ def mock_ctx():
 
     # 设置 settings 相关属性
     settings = ctx.config.settings
-    settings.mode = "local"
+    settings.mode = "offline"
     settings.integration.webhook.url = "https://example.com/webhook"
     settings.integration.webhook.value = "test_webhook_value"
     settings.integration.webhook.timeout = 5
@@ -67,14 +67,10 @@ def test_send_webhook_no_url(mock_ctx, setup_mocks):
 
 
 @responses.activate
-def test_send_webhook_online_mode(mock_ctx, setup_mocks):
-    """测试 online 模式下的正常请求，验证云端 exp_url 拼接和 JSON 载荷"""
+def test_send_webhook_offline_mode(mock_ctx, setup_mocks):
+    """测试 offline 模式下的正常请求，验证 JSON 载荷不包含云端实验链接"""
     settings = mock_ctx.config.settings
-    settings.mode = "online"
-    settings.web_host = "https://swanlab.cn"
-    settings.project.workspace = "test_user"
-    settings.project.name = "test_project"
-    settings.run.id = "run_12345"
+    settings.mode = "offline"
 
     webhook_url = settings.integration.webhook.url
 
@@ -94,32 +90,10 @@ def test_send_webhook_online_mode(mock_ctx, setup_mocks):
         "value": "test_webhook_value",
         "swanlab": {
             "version": "1.0.0",
-            "mode": "online",
+            "mode": "offline",
             "run_dir": "/path/to/run_dir",
-            "exp_url": "https://swanlab.cn/@test_user/test_project/runs/run_12345",
         },
     }
-
-
-@responses.activate
-def test_send_webhook_local_mode(mock_ctx, setup_mocks):
-    """测试 local 模式下的正常请求，验证 exp_url 为 None"""
-    settings = mock_ctx.config.settings
-    settings.mode = "local"
-    webhook_url = settings.integration.webhook.url
-
-    # 注册 responses 拦截
-    responses.add(responses.POST, webhook_url, status=200)
-
-    send_webhook(mock_ctx)
-
-    assert len(responses.calls) == 1
-    request = responses.calls[0].request
-
-    # 验证 JSON 载荷
-    payload = json.loads(request.body)  # type: ignore
-    assert payload["swanlab"]["mode"] == "local"
-    assert payload["swanlab"]["exp_url"] is None
 
 
 @responses.activate

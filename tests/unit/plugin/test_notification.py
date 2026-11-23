@@ -26,7 +26,6 @@ def _mock_settings(**overrides):
     from swanlab.sdk.internal.settings import Settings
 
     s = Settings()
-    overrides.setdefault("mode", "online")
     for k, v in overrides.items():
         if "." in k:
             parts = k.split(".", 1)
@@ -82,23 +81,12 @@ class TestLarkBot:
 
 
 class TestBuildRunUrl:
-    def test_online_with_path(self):
-        s = _mock_settings(mode="online", web_host="https://swanlab.cn")
-        url = build_run_url(s, "/test-user/test-project/abc123")
-        assert url is not None
-        assert url.startswith("https://swanlab.cn/@")
-
-    def test_offline_with_path(self):
-        s = _mock_settings(mode="offline", web_host="https://swanlab.cn")
-        url = build_run_url(s, "/test-user/test-project/abc123")
-        assert url is not None
-
-    def test_local_returns_none(self):
-        s = _mock_settings(mode="local")
+    def test_local_build_returns_none(self):
+        s = _mock_settings()
         assert build_run_url(s, "/test-user/test-project/abc123") is None
 
     def test_no_path_returns_none(self):
-        s = _mock_settings(mode="online")
+        s = _mock_settings()
         assert build_run_url(s, None) is None
 
 
@@ -202,4 +190,5 @@ class TestLarkCallbackSend:
 
         text = mock_post.call_args[1]["json"]["content"]["text"]
         assert "OOM" in text
-        assert "test-project" in text
+        # 纯本地版本不提供云端实验链接，内容中不再包含项目信息
+        assert "test-project" not in text

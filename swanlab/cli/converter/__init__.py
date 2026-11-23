@@ -35,8 +35,8 @@ from swanlab.sdk.internal.pkg import safe
 )
 @click.option(
     "--mode",
-    default="online",
-    type=click.Choice(["online", "local", "offline", "disabled"]),
+    default="offline",
+    type=click.Choice(["offline", "disabled"]),
     help="The mode of the swanlab run.",
 )
 @click.option(

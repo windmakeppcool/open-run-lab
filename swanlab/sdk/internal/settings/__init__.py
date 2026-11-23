@@ -9,7 +9,7 @@
 4. 当前目录下 .env 文件
 5. /etc/swanlab/*.{yaml,yml}
 6. 当前目录下 swanlab.{yaml,yml}
-7. K8S/Docker 容器 Secret 配置项文件
+7. 本地 secret 配置文件目录
 
 在设计上 Settings 仅是与用户交互的配置入口，不包含业务逻辑，这意味着仅检查必要的类型和格式和必要的默认值，不产生副作用：
 1. 文件夹创建
@@ -35,8 +35,8 @@ from pydantic_settings import (
 
 from swanlab.proto.swanlab.settings.core.v1.core_pb2 import CoreSettings as CoreSettingsPb
 from swanlab.proto.swanlab.settings.probe.v1.probe_pb2 import ProbeSettings as ProbeSettingsPb
-from swanlab.sdk.internal.pkg import console, helper, nrc, safe
-from swanlab.sdk.typings.run import ModeType, OnlineErrorPolicy
+from swanlab.sdk.internal.pkg import console, helper
+from swanlab.sdk.typings.run import ModeType
 
 from .compat import getenv, log_dir_factory, strip_env_quotes
 from .core import CoreSettings
@@ -46,7 +46,7 @@ from .integration import IntegrationSettings
 from .probe import ProbeSettings
 from .terminal import TerminalSettings
 
-__all__ = ["Settings", "create_settings", "resolve_hosts", "set_global_settings"]
+__all__ = ["Settings", "create_settings", "set_global_settings"]
 
 
 ROOT_FOLDER = ".swanlab"
@@ -66,7 +66,7 @@ class _QuoteAwareEnvSettingsSource(EnvSettingsSource):
     通过在 ``__init__`` 末尾清洗 ``self.env_vars``，
     使后续所有消费路径（简单字段读取、嵌套字段 explode、复杂字段 JSON 解析）均获得清理后的值。
 
-    NOTE: 剥离行为仅覆盖环境变量源；Secret 文件源（SecretsSettingsSource，含 K8S/Docker 挂载的
+    NOTE: 剥离行为仅覆盖环境变量源；Secret 文件源（SecretsSettingsSource，读取本地挂载的
     secret 文件）不做引号剥离，文件内容中的字面引号会原样保留，属于已知限制。
 
     如果有需求，后续可以效仿 SWANLAB_CONFIG_DIR 等专门写一个 ``SWANLAB_STRIP_ENV_QUOTES`` 环境变量来控制是否启用剥离功能或者专门控制某几个key的剥离行为。
@@ -93,7 +93,7 @@ class Settings(BaseSettings):
 
         >>> from swanlab import Settings
         >>> from pathlib import Path
-        >>> custom_settings = Settings(mode="local", log_dir=Path("./my_logs"))
+        >>> custom_settings = Settings(mode="offline", log_dir=Path("./my_logs"))
         >>> import swanlab
         >>> swanlab.merge_settings(custom_settings)
         >>> run = swanlab.init()
@@ -102,7 +102,7 @@ class Settings(BaseSettings):
 
         >>> from swanlab import Settings
         >>> custom_settings = Settings(
-        ...     mode="online",
+        ...     mode="offline",
         ...     probe=Settings.Probe(monitor=False)
         ... )
         >>> import swanlab
@@ -133,35 +133,19 @@ class Settings(BaseSettings):
     Useful for CI/CD environments or background batch jobs.
     """
 
-    mode: ModeType = "online"
+    mode: ModeType = "offline"
     """
     SwanLab Run mode.
 
     * `disabled`: Disable SwanLab.
-    * `local`: Run SwanLab locally.
-    * `online`: Run SwanLab syncing to cloud.
-    * `offline`: Run SwanLab in offline mode.
+    * `offline`: 将实验数据写入本地 swanlog 目录，可通过 swanlab-console 查看。
     """
 
     @field_validator("mode", mode="before")
     def validate_mode(cls, v: Any) -> ModeType:
         if v in list(get_args(ModeType)):
             return v
-        if v == "cloud":
-            return "online"
         raise ValueError(f"Invalid mode: {v}, allowed values are {list(get_args(ModeType))}")
-
-    on_online_error: OnlineErrorPolicy = "offline"
-    """
-    Online connection failure policy.
-
-    Only transient connection/server failures are degraded; authentication and
-    configuration errors always fail.
-
-    * `disabled`: Degrade to disabled mode and stop recording when SwanLab Cloud is unreachable.
-    * `offline`: Degrade to offline mode and keep local recording when SwanLab Cloud is unreachable.
-    * `raise`: Fail initialization when SwanLab Cloud is unreachable.
-    """
 
     log_dir: Path = Field(default_factory=log_dir_factory, validate_default=True)
     """
@@ -179,20 +163,6 @@ class Settings(BaseSettings):
             raise ValueError(f"Log directory {v} exists but is not a directory.")
         return Path(v)
 
-    api_key: Optional[str] = Field(default=None)
-    """
-    API key for SwanLab services.
-    """
-    api_host: str = Field(default="https://api.swanlab.cn")
-    """
-    Base URL for SwanLab API services.
-    """
-    web_host: str = Field(default="https://swanlab.cn")
-    """
-    Base URL for SwanLab web services.
-    It just a display URL for SwanLab web services, no actual effect on SDK behavior.
-    """
-
     @model_validator(mode="before")
     @classmethod
     def strip_non_empty(cls, data: Dict) -> Dict:
@@ -202,27 +172,6 @@ class Settings(BaseSettings):
         """
         if isinstance(data, dict):
             data = helper.strip_none(data)
-        return data
-
-    @model_validator(mode="before")
-    @classmethod
-    def validate_hosts(cls, data: Dict) -> Dict:
-        """
-        校验并清理 HOST 字段，确保它们以正确的格式存在。
-        推导逻辑统一由 :func:`resolve_hosts` 处理。
-        """
-        if isinstance(data, dict):
-            raw_api = data.get("api_host")
-            raw_web = data.get("web_host")
-            if raw_api or raw_web:
-                resolved_api, resolved_web, web_host_is_set = resolve_hosts(raw_api, raw_web)
-                if raw_api and resolved_api is not None:
-                    data["api_host"] = resolved_api
-
-                if web_host_is_set and resolved_web is not None:
-                    data["web_host"] = resolved_web
-                else:
-                    data.pop("web_host", None)
         return data
 
     @model_validator(mode="after")
@@ -236,63 +185,6 @@ class Settings(BaseSettings):
             raise ValueError(
                 f"Root path {path_v} exists but is not a directory.",
                 "Please remove the file or choose a different path.",
-            )
-        return self
-
-    @model_validator(mode="after")
-    def load_api_key(self) -> "Settings":
-        """
-        在所有配置加载完成后，作为最后的回退机制读取 本地 .netrc 文件。
-        参考git的设计，.netrc 文件的读取规则为：
-
-        1. 先读取 pwd / .swanlab / .netrc，作为项目级别的swanlab认证信息
-        2. 如果项目级别没有，再读取用户主目录下的 .netrc，作为全局级别的认证信息
-
-        只会覆盖未被显式设置（如环境变量/YAML）的默认配置。
-
-        映射规则：
-        - machine (host) -> api_host
-        - login (username) -> web_host
-        - password -> api_key
-        """
-        # 获取被显式设置过的字段集合（在 Env 或 Yaml 中指定过的字段，跳过覆盖）
-        fields_set = self.__pydantic_fields_set__
-        # 如果 api_key 已经被设置，则跳过
-        if "api_key" in fields_set:
-            return self
-        # api key, api host, web host
-        netrc_result: Optional[Tuple[str, str, str]] = None
-        with safe.block(message="Failed to load credentials from current directory"):
-            netrc_result = _load_netrc(self.get_pwd_config_dir() / ".netrc")
-        if netrc_result is None:
-            with safe.block(message="Failed to load credentials from root directory"):
-                netrc_result = _load_netrc(self.get_user_config_dir() / ".netrc")
-        console.debug(f"Loaded credentials: {netrc_result}")
-        if netrc_result is not None:
-            api_key, api_host, web_host = netrc_result
-            # 前提条件：读取到的 api_host 与当前配置的 api_host 匹配，或者 api_host 未被显式设置
-            # 如果用户显式设置了 api_host 但与 netrc 中存储的不一致，说明用户切换了环境，不应使用旧凭证
-            if "api_host" not in fields_set or self.api_host == api_host:
-                if "api_key" not in fields_set and api_key:
-                    object.__setattr__(self, "api_key", api_key)
-                    fields_set.add("api_key")
-                if "api_host" not in fields_set and api_host:
-                    object.__setattr__(self, "api_host", api_host)
-                    fields_set.add("api_host")
-                if "web_host" not in fields_set and web_host:
-                    object.__setattr__(self, "web_host", web_host)
-                    fields_set.add("web_host")
-        return self
-
-    @model_validator(mode="after")
-    def validate_skip_store(self) -> "Settings":
-        """
-        ``core.skip_store`` 仅 online mode 合法。
-        """
-        if self.mode != "online" and self.core.skip_store:
-            raise ValueError(
-                f"core.skip_store=true is only supported in online mode, but mode is '{self.mode}'. "
-                "Set mode='online' or core.skip_store=false."
             )
         return self
 
@@ -314,7 +206,7 @@ class Settings(BaseSettings):
     """
     integration: IntegrationSettings = Field(default_factory=IntegrationSettings)
     """
-    Configuration for SwanLab integrations, including webhook, dashboard, etc.
+    Configuration for SwanLab integrations, including webhook, etc.
     """
     core: CoreSettings = Field(default_factory=CoreSettings)
     """
@@ -333,7 +225,7 @@ class Settings(BaseSettings):
         env_nested_max_split=1,
         extra="ignore",
         frozen=True,
-        # 指定 Secret 文件存放目录，通常在容器中挂载到这里
+        # 指定 Secret 文件存放目录
         secrets_dir=SECRETS_DIR,
         validate_assignment=True,
         str_strip_whitespace=True,
@@ -554,11 +446,6 @@ class Settings(BaseSettings):
         # 3. 递归合并数据 (确保嵌套的 dict 如 collect.metadata 不会被整个替换)
         merged_data = _deep_update(current_data, update_data)
 
-        # 本次更新显式指定了 api_host 但未显式指定 web_host 时，
-        # 移除 web_host 以便 validate_hosts 自动从 api_host 推导
-        if "api_host" in update_data and "web_host" not in update_data:
-            merged_data.pop("web_host", None)
-
         # 4. 验证新数据：通过类构造函数生成临时实例以触发校验和 Path 转换
         # 这一步能确保传入的路径字符串被 field_validator 处理成 Path 对象并创建目录
         validated_instance = self.__class__(**merged_data)
@@ -573,52 +460,6 @@ class Settings(BaseSettings):
         object.__setattr__(self, "__pydantic_fields_set__", validated_instance.__pydantic_fields_set__)
 
 
-def resolve_hosts(
-    api_host: Optional[str] = None,
-    web_host: Optional[str] = None,
-) -> Union[Tuple[None, None, bool], Tuple[str, str, bool]]:
-    """
-    规范化 host 并在缺少 web_host 时从 api_host 推导。
-
-    - api_host 和 web_host 都会通过 ``nrc.fmt`` 清理路由、补全协议
-    - 官方默认 host 的 http 形式会统一转换为 https
-    - 当 api_host 非空而 web_host 未提供时，自动从 api_host 推导 web_host
-    - 官方 api_host 对应官方 web_host；仅提供 web_host 时使用官方 api_host
-
-    :param api_host: 原始 api_host，为空表示未提供
-    :param web_host: 原始 web_host，为空表示未提供
-    :return: (api_host, web_host, web_host_is_set)，最后一项表示 web_host 应保留为显式或推导设置
-    """
-    # 1. 规范化 host，清理路由、补全协议
-    cleaned_api = nrc.fmt(api_host) if api_host is not None else None
-    cleaned_web = nrc.fmt(web_host) if web_host is not None else None
-
-    if cleaned_api is None and cleaned_web is None:
-        return None, None, False
-
-    # 2. 识别官方默认 host，后续只基于语义结果进行规范化和推导
-    default_api = str(Settings.model_fields["api_host"].default)
-    default_web = str(Settings.model_fields["web_host"].default)
-    http_default_api = default_api.replace("https://", "http://", 1)
-    http_default_web = default_web.replace("https://", "http://", 1)
-
-    # 3. 设置默认值和推导逻辑
-    if cleaned_api is None:
-        cleaned_api = default_api
-    api_is_default = cleaned_api in (default_api, http_default_api)
-    web_is_default_api = cleaned_web in (default_api, http_default_api)
-    web_is_default = cleaned_web in (default_api, http_default_api, default_web, http_default_web)
-    web_host_is_set = not web_is_default_api and (web_host is not None or not api_is_default)
-    if api_is_default:
-        cleaned_api = default_api
-    if web_is_default:
-        cleaned_web = default_web
-    elif cleaned_web is None:
-        cleaned_web = default_web if api_is_default else cleaned_api
-
-    return cleaned_api, cleaned_web, web_host_is_set
-
-
 def _deep_update(base_dict: dict, update_dict: dict) -> dict:
     """递归合并字典，用于嵌套模型的 merge_settings"""
     for k, v in update_dict.items():
@@ -627,12 +468,6 @@ def _deep_update(base_dict: dict, update_dict: dict) -> dict:
         else:
             base_dict[k] = v
     return base_dict
-
-
-def _load_netrc(netrc_path: Path) -> Optional[Tuple[str, str, str]]:
-    if netrc_path.exists() and netrc_path.is_file():
-        return nrc.read(netrc_path)
-    return None
 
 
 def create_settings() -> Settings:

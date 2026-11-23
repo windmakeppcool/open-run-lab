@@ -27,7 +27,14 @@ def scenario_qwen(name: str, lora_r: int, loss_base: float, acc_base: float) -> 
         description=f"Qwen2.5-0.5B LoRA 微调基线，lora_r={lora_r}",
         tags=["lora", f"r{lora_r}", "qwen2"],
         group="qwen-lora",
-        config={"learning_rate": 2e-4, "lora_r": lora_r, "lora_alpha": 32, "batch_size": 4, "epochs": 3, "optimizer": "adamw"},
+        config={
+            "learning_rate": 2e-4,
+            "lora_r": lora_r,
+            "lora_alpha": 32,
+            "batch_size": 4,
+            "epochs": 3,
+            "optimizer": "adamw",
+        },
         mode="offline",
     )
     for step in range(1, 61):
@@ -40,7 +47,13 @@ def scenario_qwen(name: str, lora_r: int, loss_base: float, acc_base: float) -> 
             step=step,
         )
         if step % 10 == 0:
-            run.log({"eval/loss": loss_base + 0.65 * math.exp(-step / 20) + 0.02, "eval/acc": acc_base + (1 - acc_base) * (1 - math.exp(-step / 24))}, step=step)
+            run.log(
+                {
+                    "eval/loss": loss_base + 0.65 * math.exp(-step / 20) + 0.02,
+                    "eval/acc": acc_base + (1 - acc_base) * (1 - math.exp(-step / 24)),
+                },
+                step=step,
+            )
             print(f"[{name}] step={step} eval/loss={loss_base + 0.65 * math.exp(-step / 20) + 0.02:.4f}")
     run.finish()
 
@@ -84,7 +97,10 @@ def scenario_crash() -> None:
         mode="offline",
     )
     for step in range(1, 26):
-        run.log({"train/loss": 1.8 + 0.4 * math.exp(-step / 15), "train/acc": 0.3 + 0.15 * (1 - math.exp(-step / 15))}, step=step)
+        run.log(
+            {"train/loss": 1.8 + 0.4 * math.exp(-step / 15), "train/acc": 0.3 + 0.15 * (1 - math.exp(-step / 15))},
+            step=step,
+        )
         print(f"[qwen-full-ft] step={step} train/loss={1.8 + 0.4 * math.exp(-step / 15):.4f}")
     raise RuntimeError("CUDA out of memory. Tried to allocate 2.50 GiB (GPU 0; 23.65 GiB total capacity)")
 
@@ -101,7 +117,13 @@ def scenario_running() -> None:
         mode="offline",
     )
     for step in range(1, 401):
-        run.log({"train/loss": 2.4 + 1.1 * math.exp(-step / 120) + 0.02 * math.sin(step / 9), "train/f1": 0.35 + 0.55 * (1 - math.exp(-step / 150))}, step=step)
+        run.log(
+            {
+                "train/loss": 2.4 + 1.1 * math.exp(-step / 120) + 0.02 * math.sin(step / 9),
+                "train/f1": 0.35 + 0.55 * (1 - math.exp(-step / 150)),
+            },
+            step=step,
+        )
         if step % 50 == 0:
             print(f"[bert-ner-e2e] step={step} running...")
     # 等待后台消费者把队列中的记录落盘，避免强杀时数据还堆在缓冲区里

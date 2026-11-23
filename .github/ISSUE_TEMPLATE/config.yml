@@ -1,8 +1,5 @@
 blank_issues_enabled: false
 contact_links:
-  - name: 报告自托管问题
-    url: https://github.com/SwanHubX/self-hosted/issues
-    about: 报告与自托管 SwanLab 相关的问题
   - name: 查看文档
     url: https://docs.swanlab.cn
     about: 查阅官方文档获取常见问题解答

@@ -17,20 +17,14 @@ ParallelType = Literal["none", "shared"]
 Run 并行策略
 """
 
-ModeType = Literal["disabled", "online", "local", "offline"]
+ModeType = Literal["disabled", "offline"]
 """
 Run 运行策略
-"""
 
-OnlineErrorPolicy = Literal["disabled", "offline", "raise"]
-"""
-在线模式连接失败策略
+仅在本地运行，不包含任何云端同步模式。
 
-仅连接类 / 服务端瞬时错误参与降级；认证与配置错误始终抛错。
-
-* `disabled`: 服务不可用时降级为 disabled，训练继续但不记录数据。
-* `offline`: 服务不可用时降级为 offline，继续本地记录。
-* `raise`: 保持严格失败，连接异常时直接抛错。
+* `offline`: 将实验数据写入本地 swanlog 目录，可通过 swanlab-console 查看。
+* `disabled`: 完全关闭 SwanLab，不记录任何数据。
 """
 
 FinishType = Literal["success", "crashed", "aborted"]

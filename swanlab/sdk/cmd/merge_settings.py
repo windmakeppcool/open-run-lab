@@ -28,7 +28,7 @@ def merge_settings(settings: Union[Settings, dict]) -> None:
         Merge settings from a dictionary:
 
         >>> import swanlab
-        >>> swanlab.merge_settings({"mode": "local", "log_dir": "./my_logs"})
+        >>> swanlab.merge_settings({"mode": "offline", "log_dir": "./my_logs"})
         >>> swanlab.init()
 
         Disable hardware monitoring:

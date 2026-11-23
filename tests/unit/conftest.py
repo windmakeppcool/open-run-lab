@@ -19,16 +19,16 @@ def isolate_sdk_environment(tmp_path, monkeypatch):
       1. 隔离磁盘路径与环境变量
       2. 重置全局 Settings 覆盖
 
-    Teardown（测试后，无论成功或失败均执行）：
-      1. 清理 Run —— 需在 client 之前，online 模式的 finish() 依赖 client
-      2. 清理 Client 单例
-      3. 清理 logger
-      4. 清理 callbacker
+    Teardown / Setup（测试前）：
+      1. 隔离磁盘路径与环境变量
+      2. 重置全局 Settings 覆盖
+      3. 清理 Run 单例
+      4. 清理 logger
+      5. 清理 callbacker
     """
 
     import swanlab
     from swanlab.sdk.internal.context.components.callbacker import global_callbacker
-    from swanlab.sdk.internal.core_python import client
     from swanlab.sdk.internal.pkg import console
     from swanlab.sdk.internal.run import clear_run
     from swanlab.sdk.internal.run.components.config import reset as reset_config
@@ -53,7 +53,6 @@ def isolate_sdk_environment(tmp_path, monkeypatch):
     set_global_settings(Settings())
 
     # 3. 清理 Run 单例
-    # 必须在 client 重置之前执行：online 模式的 run.finish() 可能需要 client 发送最后请求
     # 若 finish() 本身出错（如后台线程异常），直接强制清除引用，防止污染下一个用例
     if (run := swanlab.run) is not None:
         # noinspection PyBroadException
@@ -62,17 +61,13 @@ def isolate_sdk_environment(tmp_path, monkeypatch):
         except Exception:  # noqa: E722
             clear_run()
 
-    # 4. 清理 Client 单例
-    if client.exists():
-        client.reset()
-
-    # 5. 清理 logger
+    # 4. 清理 logger
     console.reset()
 
-    # 6. 清理 config
+    # 5. 清理 config
     reset_config()
 
-    # 7. 清理 callbacker
+    # 6. 清理 callbacker
     for callback in global_callbacker.registered_callbacks:
         global_callbacker.remove_callback(callback.name)
 

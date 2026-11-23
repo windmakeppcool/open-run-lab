@@ -19,16 +19,21 @@ class CoreSettings(BaseModel):
     """
     record_batch: int = Field(default=10_000, gt=0, lt=100_000)
     """
-    Batch size of records per HTTP request in Dispatch. Default 10000.
+    Batch size of records per dispatch. Default 10000.
+
+    纯本地版本不再有网络分片，此字段仅为兼容 CoreSettings proto 保留。
     """
     record_interval: float = Field(default=1.5, gt=0)
     """
-    Batch interval (seconds) for the Transport upload thread.
-    Default 1.5s. Use a smaller value (e.g. 0.5) in Converter scenarios for higher throughput.
+    Batch interval (seconds). Default 1.5s.
+
+    纯本地版本不再有上传线程，此字段仅为兼容 CoreSettings proto 保留。
     """
     save_split: int = Field(default=100 * 1024 * 1024)
     """
-    File size threshold in bytes for multipart upload. Default 100 MiB.
+    File size threshold in bytes for splitting. Default 100 MiB.
+
+    纯本地版本不再有分片上传，此字段仅为兼容 CoreSettings proto 保留。
     """
     save_size: int = Field(default=50 * 1024 * 1024 * 1024)
     """
@@ -36,19 +41,19 @@ class CoreSettings(BaseModel):
     """
     save_part: int = Field(default=32 * 1024 * 1024, gt=0)
     """
-    Multipart upload part size in bytes. Default 32 MiB.
+    Part size in bytes. Default 32 MiB.
+
+    纯本地版本不再有分片上传，此字段仅为兼容 CoreSettings proto 保留。
     """
     save_batch: int = Field(default=100)
     """
-    Maximum number of files per save upload batch. Default 100.
+    Maximum number of files per save batch. Default 100.
     """
     skip_store: bool = Field(default=False)
     """
-    Skip all SDK-owned local files and upload to the cloud only (requires ``online`` mode).
+    跳过所有 SDK 本地文件写入。
 
-    Media contents and internal texts (config/metadata/requirements/conda) are inlined
-    into records and uploaded directly; ``run.save()`` files are read from their original
-    path without local links.
-    ``swanlab sync`` / ``swanlab watch`` do not apply; a crashed run cannot be recovered.
+    纯本地版本下开启后不会产生任何可供 swanlab-console 查看的数据，
+    通常只用于完全关闭持久化的场景。
     """
     model_config = ConfigDict(frozen=True)

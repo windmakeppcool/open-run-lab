@@ -9,23 +9,13 @@ import json
 from unittest.mock import MagicMock
 
 import pytest
-import requests
 
-from swanlab.exceptions import ApiError, AuthenticationError
 from swanlab.sdk.cmd.init import (
     compatible_kwargs,
     ensure_run_dir,
     load_config,
-    prompt_init_mode,
     set_nested_value,
 )
-
-
-def _wrapped_auth_error(cause: BaseException) -> AuthenticationError:
-    try:
-        raise AuthenticationError("wrapped") from cause
-    except AuthenticationError as exc:
-        return exc
 
 
 # ==========================================
@@ -36,9 +26,6 @@ def mock_settings():
     """构造一个轻量级的 Settings Mock 对象"""
     settings = MagicMock()
     settings.run.config = None
-    settings.mode = "online"
-    settings.interactive = True
-    settings.web_host = "https://swanlab.cn"
     return settings
 
 
@@ -71,113 +58,6 @@ def test_load_config_exceptions(mock_settings):
 
     with pytest.raises(ValueError, match="Invalid config type"):
         load_config(mock_settings, 123)  # type: ignore
-
-
-# ==========================================
-# Tests for `prompt_init_mode`
-# ==========================================
-def test_prompt_fast_exits(mock_settings, monkeypatch):
-    """测试快速跳过的条件：非 online 模式、非交互模式、已登录"""
-    # 1. 模拟已登录 (client.exists 返回 True)
-    monkeypatch.setattr("swanlab.sdk.cmd.init.client.exists", lambda: True)
-    assert prompt_init_mode(mock_settings) == "online"
-
-    monkeypatch.setattr("swanlab.sdk.cmd.init.client.exists", lambda: False)
-
-    # 2. 模拟非交互模式
-    mock_settings.interactive = False
-    assert prompt_init_mode(mock_settings) == "online"
-
-    # 3. 模拟非云端模式
-    mock_settings.interactive = True
-    mock_settings.mode = "local"
-    assert prompt_init_mode(mock_settings) == "local"
-
-
-def test_prompt_auto_login(mock_settings, monkeypatch):
-    """测试本地已存在 apikey 时直接返回 online 模式"""
-    monkeypatch.setattr("swanlab.sdk.cmd.init.client.exists", lambda: False)
-    # 设置 api_key 模拟已存在凭证
-    mock_settings.api_key = "fake-key"
-
-    mock_login_raw = MagicMock(return_value=True)
-    monkeypatch.setattr("swanlab.sdk.cmd.init.login_raw", mock_login_raw)
-
-    assert prompt_init_mode(mock_settings) == "online"
-    # 有 api_key 时不再调用 login_raw，登录推迟到后续流程
-
-
-@pytest.mark.parametrize(
-    "inputs, mock_login_success, expected_mode",
-    [
-        # 直接选 3 -> 切换离线模式
-        (["3"], False, "offline"),
-        # 直接选 1 -> 触发交互登录并返回成功
-        (["1"], True, "online"),
-        # 直接选 2 -> 触发交互登录并返回失败
-        (["2"], False, "online"),
-        # 乱输一通后选 3 -> 循环容错测试
-        (["invalid", "wrong", "3"], False, "offline"),
-    ],
-)
-def test_prompt_interactive_choices(mock_settings, monkeypatch, inputs, mock_login_success, expected_mode):
-    """使用参数化和猴子补丁极致压缩终端交互的测试代码"""
-    monkeypatch.setattr("swanlab.sdk.cmd.init.client.exists", lambda: False)
-    mock_settings.api_key = None
-
-    # 模拟 login_raw 返回值
-    monkeypatch.setattr("swanlab.sdk.cmd.init.login_cli", lambda **kwargs: mock_login_success)
-
-    # 模拟 input，通过迭代器按顺序弹出输入值
-    input_iterator = iter(inputs)
-    monkeypatch.setattr("builtins.input", lambda prompt: next(input_iterator))
-
-    assert prompt_init_mode(mock_settings) == expected_mode
-
-
-@pytest.mark.parametrize("policy", ["offline", "disabled"])
-def test_prompt_login_transient_error_degrades(mock_settings, monkeypatch, policy):
-    """交互式登录遇到连接类错误时，按 on_online_error 降级而不是终止进程。"""
-    monkeypatch.setattr("swanlab.sdk.cmd.init.client.exists", lambda: False)
-    mock_settings.api_key = None
-    mock_settings.on_online_error = policy
-    mock_login = MagicMock(side_effect=_wrapped_auth_error(requests.ConnectionError("boom")))
-    monkeypatch.setattr("swanlab.sdk.cmd.init.login_cli", mock_login)
-    monkeypatch.setattr("builtins.input", lambda prompt: "1")
-
-    assert prompt_init_mode(mock_settings) == policy
-    mock_login.assert_called_once()
-
-
-def test_prompt_login_unauthorized_still_raises(mock_settings, monkeypatch):
-    """401/403 属于 API Key 错误，不做降级。"""
-    monkeypatch.setattr("swanlab.sdk.cmd.init.client.exists", lambda: False)
-    mock_settings.api_key = None
-    mock_settings.on_online_error = "offline"
-    unauthorized = ApiError(MagicMock(status_code=401), method="POST", code=401, message="unauthorized")
-    monkeypatch.setattr(
-        "swanlab.sdk.cmd.init.login_cli",
-        MagicMock(side_effect=_wrapped_auth_error(unauthorized)),
-    )
-    monkeypatch.setattr("builtins.input", lambda prompt: "1")
-
-    with pytest.raises(AuthenticationError):
-        prompt_init_mode(mock_settings)
-
-
-def test_prompt_login_transient_error_with_raise_policy(mock_settings, monkeypatch):
-    """on_online_error="raise" 时保持严格失败。"""
-    monkeypatch.setattr("swanlab.sdk.cmd.init.client.exists", lambda: False)
-    mock_settings.api_key = None
-    mock_settings.on_online_error = "raise"
-    monkeypatch.setattr(
-        "swanlab.sdk.cmd.init.login_cli",
-        MagicMock(side_effect=_wrapped_auth_error(requests.ConnectionError("boom"))),
-    )
-    monkeypatch.setattr("builtins.input", lambda prompt: "1")
-
-    with pytest.raises(AuthenticationError):
-        prompt_init_mode(mock_settings)
 
 
 class TestSetNestedValue:
