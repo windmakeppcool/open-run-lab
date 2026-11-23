@@ -6,11 +6,11 @@ from unittest.mock import MagicMock
 import pytest
 from watchdog.events import FileMovedEvent
 
-from swanlab.proto.swanlab.save.v1.save_pb2 import SavePolicy, SaveRecord
-from swanlab.sdk.internal.core_python import watcher as watcher_module
-from swanlab.sdk.internal.core_python.watcher import FileWatcher, NullFileWatcher
-from swanlab.sdk.internal.core_python.watcher import helper as watcher_helper
-from swanlab.sdk.internal.core_python.watcher.helper import _Handler
+from open_run_lab.proto.orlab.save.v1.save_pb2 import SavePolicy, SaveRecord
+from open_run_lab.sdk.internal.core_python import watcher as watcher_module
+from open_run_lab.sdk.internal.core_python.watcher import FileWatcher, NullFileWatcher
+from open_run_lab.sdk.internal.core_python.watcher import helper as watcher_helper
+from open_run_lab.sdk.internal.core_python.watcher.helper import _Handler
 
 
 @pytest.fixture

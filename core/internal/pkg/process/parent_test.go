@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/swanhubx/swanlab/core/internal/pkg/console"
+	"github.com/open-run-lab/open-run-lab/core/internal/pkg/console"
 )
 
 func TestNotifyOnParentExitRejectsInvalidPID(t *testing.T) {

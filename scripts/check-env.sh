@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# SwanLab 纯本地环境校验工具
+# OpenRunLab 纯本地环境校验工具
 # 用法：bash scripts/check-env.sh
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-BACKEND="$ROOT/swanlab-console/backend"
-FRONTEND="$ROOT/swanlab-console/frontend"
-PROTOS_DIR="${SWANLAB_PROTOS_DIR:-$ROOT/protos}"
-SWANLOG_DIR="${SWANLOG_DIR:-$ROOT/swanlab-console/testdata/swanlog}"
+BACKEND="$ROOT/orlab-console/backend"
+FRONTEND="$ROOT/orlab-console/frontend"
+PROTOS_DIR="${ORLAB_PROTOS_DIR:-$ROOT/protos}"
+ORLAB_LOGDIR="${ORLAB_LOGDIR:-$ROOT/orlab-console/testdata/orlab-log}"
 BACKEND_PORT="${PORT:-8787}"
 FRONTEND_PORT="${FRONTEND_PORT:-5173}"
 
@@ -60,12 +60,12 @@ else
   fail "proto 定义目录不存在：$PROTOS_DIR"
 fi
 
-if [ -d "$SWANLOG_DIR" ]; then
-  ok "实验数据目录存在：$SWANLOG_DIR"
-elif mkdir -p "$SWANLOG_DIR" 2>/dev/null; then
-  ok "已创建实验数据目录：$SWANLOG_DIR"
+if [ -d "$ORLAB_LOGDIR" ]; then
+  ok "实验数据目录存在：$ORLAB_LOGDIR"
+elif mkdir -p "$ORLAB_LOGDIR" 2>/dev/null; then
+  ok "已创建实验数据目录：$ORLAB_LOGDIR"
 else
-  fail "无法创建实验数据目录：$SWANLOG_DIR"
+  fail "无法创建实验数据目录：$ORLAB_LOGDIR"
 fi
 
 if [ -f "$BACKEND/package.json" ] && [ -f "$FRONTEND/package.json" ]; then
@@ -79,13 +79,13 @@ section "3. 控制台依赖"
 if [ -d "$BACKEND/node_modules" ]; then
   ok "后端依赖已安装"
 else
-  warn "后端依赖未安装，请执行：cd swanlab-console/backend && npm ci"
+  warn "后端依赖未安装，请执行：cd orlab-console/backend && npm ci"
 fi
 
 if [ -d "$FRONTEND/node_modules" ]; then
   ok "前端依赖已安装"
 else
-  warn "前端依赖未安装，请执行：cd swanlab-console/frontend && npm ci"
+  warn "前端依赖未安装，请执行：cd orlab-console/frontend && npm ci"
 fi
 
 section "4. 端口占用"

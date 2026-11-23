@@ -100,8 +100,8 @@ class _SetStepTracker:
 
 
 def _child_main(impl: str, workload: str) -> None:
-    from swanlab.sdk.internal.core_python.metrics import RunMetrics
-    from swanlab.sdk.internal.core_python.pkg import builder
+    from open_run_lab.sdk.internal.core_python.metrics import RunMetrics
+    from open_run_lab.sdk.internal.core_python.pkg import builder
 
     def make_trackers() -> Tuple[List[Any], Optional[int]]:
         """返回 (tracker 列表, 序列化字节样本所在下标或 None)"""

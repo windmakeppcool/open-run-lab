@@ -11,12 +11,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/swanhubx/swanlab/core/internal/pkg/console"
+	"github.com/open-run-lab/open-run-lab/core/internal/pkg/console"
 )
 
 // parentExitHelperMode 仅用于让同一个测试二进制分别扮演辅助父进程和被监控子进程。
 // 测试进程 -> parent helper -> monitored child 的三级结构可以真实验证父进程退出行为。
-const parentExitHelperMode = "SWANLAB_PARENT_EXIT_HELPER"
+const parentExitHelperMode = "ORLAB_PARENT_EXIT_HELPER"
 
 func TestNotifyOnParentExitNotifiesCaller(t *testing.T) {
 	switch os.Getenv(parentExitHelperMode) {
@@ -28,7 +28,7 @@ func TestNotifyOnParentExitNotifiesCaller(t *testing.T) {
 
 	helperDir := t.TempDir()
 	cmd := exec.Command(os.Args[0], "-test.run=^TestNotifyOnParentExitNotifiesCaller$")
-	cmd.Env = append(os.Environ(), parentExitHelperMode+"=parent", "SWANLAB_PARENT_EXIT_DIR="+helperDir)
+	cmd.Env = append(os.Environ(), parentExitHelperMode+"=parent", "ORLAB_PARENT_EXIT_DIR="+helperDir)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		t.Fatal(err)
@@ -67,13 +67,13 @@ func TestNotifyOnParentExitNotifiesCaller(t *testing.T) {
 }
 
 func runParentHelper() {
-	helperDir := os.Getenv("SWANLAB_PARENT_EXIT_DIR")
+	helperDir := os.Getenv("ORLAB_PARENT_EXIT_DIR")
 	cmd := exec.Command(os.Args[0], "-test.run=^TestNotifyOnParentExitNotifiesCaller$")
 	cmd.Env = append(
 		os.Environ(),
 		parentExitHelperMode+"=child",
-		"SWANLAB_PARENT_EXIT_DIR="+helperDir,
-		"SWANLAB_DEBUG=true",
+		"ORLAB_PARENT_EXIT_DIR="+helperDir,
+		"ORLAB_DEBUG=true",
 	)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -95,7 +95,7 @@ func runParentHelper() {
 }
 
 func runMonitoredChildHelper() {
-	helperDir := os.Getenv("SWANLAB_PARENT_EXIT_DIR")
+	helperDir := os.Getenv("ORLAB_PARENT_EXIT_DIR")
 	if err := console.Init(helperDir); err != nil {
 		fmt.Fprintf(os.Stderr, "initialize console: %v\n", err)
 		os.Exit(2)

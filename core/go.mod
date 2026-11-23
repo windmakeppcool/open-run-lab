@@ -1,4 +1,4 @@
-module github.com/swanhubx/swanlab/core
+module github.com/open-run-lab/open-run-lab/core
 
 go 1.26.5
 

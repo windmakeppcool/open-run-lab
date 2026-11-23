@@ -12,9 +12,9 @@ import numpy as np
 import pytest
 from google.protobuf.timestamp_pb2 import Timestamp
 
-from swanlab.proto.swanlab.metric.column.v1.column_pb2 import ColumnType
-from swanlab.proto.swanlab.metric.data.v1.data_pb2 import MediaItem
-from swanlab.sdk.internal.run.transforms.object3d import Object3D
+from open_run_lab.proto.orlab.metric.column.v1.column_pb2 import ColumnType
+from open_run_lab.proto.orlab.metric.data.v1.data_pb2 import MediaItem
+from open_run_lab.sdk.internal.run.transforms.object3d import Object3D
 
 # ---------------------------------- Fixtures ----------------------------------
 
@@ -51,9 +51,9 @@ def glb_file(tmp_path):
 
 @pytest.fixture
 def pts_json_file(tmp_path):
-    """生成一个临时 .swanlab.pts.json 文件"""
+    """生成一个临时 .orlab.pts.json 文件"""
     pts_data = {"version": "0.1", "points": [[0, 0, 0, 0, 255, 0], [1, 1, 1, 255, 0, 0]], "boxes": []}
-    path = tmp_path / "test.swanlab.pts.json"
+    path = tmp_path / "test.orlab.pts.json"
     path.write_text(json.dumps(pts_data))
     return path
 
@@ -65,30 +65,30 @@ class TestObject3DInit:
     def test_from_xyz_array(self, xyz_array):
         """从 (N,3) XYZ 数组构造"""
         obj = Object3D(xyz_array)
-        assert obj.file_type == "swanlab.pts.json"
+        assert obj.file_type == "orlab.pts.json"
         assert obj.caption is None
         assert len(obj.buffer.getvalue()) > 0
 
     def test_from_xyzc_array(self, xyzc_array):
         """从 (N,4) XYZC 数组构造"""
         obj = Object3D(xyzc_array)
-        assert obj.file_type == "swanlab.pts.json"
+        assert obj.file_type == "orlab.pts.json"
 
     def test_from_xyzrgb_array(self, xyzrgb_array):
         """从 (N,6) XYZRGB 数组构造"""
         obj = Object3D(xyzrgb_array)
-        assert obj.file_type == "swanlab.pts.json"
+        assert obj.file_type == "orlab.pts.json"
 
     def test_from_dict_points_only(self, xyz_array):
         """从 dict {"points": ...} 构造"""
         obj = Object3D({"points": xyz_array})
-        assert obj.file_type == "swanlab.pts.json"
+        assert obj.file_type == "orlab.pts.json"
 
     def test_from_dict_with_boxes(self, xyz_array):
         """从 dict {"points": ..., "boxes": [...]} 构造"""
         boxes = [{"color": [255, 0, 0], "corners": [[0, 0, 0]] * 8, "label": "car", "score": 0.9}]
         obj = Object3D({"points": xyz_array, "boxes": boxes})
-        assert obj.file_type == "swanlab.pts.json"
+        assert obj.file_type == "orlab.pts.json"
         # 验证 boxes 被序列化到 buffer 中
         data = json.loads(obj.buffer.getvalue())
         assert len(data["boxes"]) == 1
@@ -98,7 +98,7 @@ class TestObject3DInit:
         """从 dict 的 list 类型 points 构造"""
         points = [[0, 0, 0], [1, 1, 1], [2, 2, 2]]
         obj = Object3D({"points": points})
-        assert obj.file_type == "swanlab.pts.json"
+        assert obj.file_type == "orlab.pts.json"
 
     def test_from_glb_file(self, glb_file):
         """从 GLB 文件路径构造"""
@@ -112,9 +112,9 @@ class TestObject3DInit:
         assert obj.file_type == "glb"
 
     def test_from_pts_json_file(self, pts_json_file):
-        """从 .swanlab.pts.json 文件构造"""
+        """从 .orlab.pts.json 文件构造"""
         obj = Object3D(str(pts_json_file))
-        assert obj.file_type == "swanlab.pts.json"
+        assert obj.file_type == "orlab.pts.json"
 
     def test_caption_stored(self, xyz_array):
         """caption 被正确保存"""
@@ -238,9 +238,9 @@ class TestObject3DTransform:
         assert isinstance(item, MediaItem)
 
     def test_transform_pts_filename(self, xyz_array, tmp_path):
-        """点云 transform 输出 .swanlab.pts.json 文件"""
+        """点云 transform 输出 .orlab.pts.json 文件"""
         item = Object3D(xyz_array).transform(step=1, path=tmp_path)
-        assert item.filename.endswith(".swanlab.pts.json")
+        assert item.filename.endswith(".orlab.pts.json")
         assert (tmp_path / item.filename).exists()
 
     def test_transform_glb_filename(self, glb_file, tmp_path):
@@ -288,7 +288,7 @@ class TestObject3DFactoryMethods:
     def test_from_point_data(self, xyz_array):
         """from_point_data 创建 Object3D"""
         obj = Object3D.from_point_data(xyz_array, caption="test")
-        assert obj.file_type == "swanlab.pts.json"
+        assert obj.file_type == "orlab.pts.json"
         assert obj.caption == "test"
 
     def test_from_point_data_with_boxes(self, xyz_array):

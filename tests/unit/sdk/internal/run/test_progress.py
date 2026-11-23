@@ -5,23 +5,23 @@ from typing import Optional
 
 from rich.text import Text
 
-from swanlab.proto.swanlab.grpc.core.v1.core_pb2 import GetOperationStatsResponse
-from swanlab.proto.swanlab.operation.v1.operation_pb2 import (
+from open_run_lab.proto.orlab.grpc.core.v1.core_pb2 import GetOperationStatsResponse
+from open_run_lab.proto.orlab.operation.v1.operation_pb2 import (
     CoreState,
     FileProgress,
     OperationStats,
 )
-from swanlab.sdk.internal.run import progress as progress_module
-from swanlab.sdk.internal.run.fmt import (
+from open_run_lab.sdk.internal.run import progress as progress_module
+from open_run_lab.sdk.internal.run.fmt import (
     fmt_bytes as _format_bytes,
 )
-from swanlab.sdk.internal.run.fmt import (
+from open_run_lab.sdk.internal.run.fmt import (
     fmt_items as _format_items,
 )
-from swanlab.sdk.internal.run.fmt import (
+from open_run_lab.sdk.internal.run.fmt import (
     fmt_rate as _format_rate,
 )
-from swanlab.sdk.internal.run.progress import (
+from open_run_lab.sdk.internal.run.progress import (
     _build_renderable,
     progress_display,
     run_with_progress,

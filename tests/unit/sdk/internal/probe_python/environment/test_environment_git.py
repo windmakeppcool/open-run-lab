@@ -10,8 +10,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from swanlab.sdk.internal.probe_python.environment import git
-from swanlab.sdk.internal.probe_python.typings import GitSnapshot
+from open_run_lab.sdk.internal.probe_python.environment import git
+from open_run_lab.sdk.internal.probe_python.typings import GitSnapshot
 
 
 class TestParseGitUrl:
@@ -21,13 +21,13 @@ class TestParseGitUrl:
         "url,expected",
         [
             # ---- SSH scp-like: 冒号分隔 host 与 path, 末尾剥 .git ----
-            ("git@github.com:SwanHubX/SwanLab.git", "https://github.com/SwanHubX/SwanLab"),
+            ("git@github.com:SwanHubX/OpenRunLab.git", "https://github.com/SwanHubX/OpenRunLab"),
             ("git@github.com:user/repo", "https://github.com/user/repo"),
             ("git@gitlab.com:user/project.git", "https://gitlab.com/user/project"),
             ("git@gitlab.com:group/subgroup/project.git", "https://gitlab.com/group/subgroup/project"),
             # ---- SSH 带端口: host:port 形式, 端口被保留 ----
-            ("git@localhost:8000/swanhubx/swanlab.git", "https://localhost:8000/swanhubx/swanlab"),
-            ("git@localhost:8000/swanhubx/swanlab", "https://localhost:8000/swanhubx/swanlab"),
+            ("git@localhost:8000/swanhubx/orlab.git", "https://localhost:8000/swanhubx/orlab"),
+            ("git@localhost:8000/swanhubx/orlab", "https://localhost:8000/swanhubx/orlab"),
             # ---- HTTPS / 其他协议: 不改协议, 仅剥 .git ----
             ("https://github.com/user/repo.git", "https://github.com/user/repo"),
             ("https://github.com/user/repo", "https://github.com/user/repo"),
@@ -123,7 +123,7 @@ class TestGetCommit:
     def test_get_commit_success(self):
         """成功获取当前提交 hash"""
         with (
-            patch("swanlab.sdk.internal.probe_python.environment.git.get_branch") as mock_branch,
+            patch("open_run_lab.sdk.internal.probe_python.environment.git.get_branch") as mock_branch,
             patch("subprocess.run") as mock_run,
         ):
             mock_branch.return_value = "main"
@@ -135,7 +135,7 @@ class TestGetCommit:
     @pytest.mark.parametrize("branch_value", [None, ""])
     def test_get_commit_no_branch(self, branch_value):
         """没有分支时返回 None"""
-        with patch("swanlab.sdk.internal.probe_python.environment.git.get_branch") as mock_branch:
+        with patch("open_run_lab.sdk.internal.probe_python.environment.git.get_branch") as mock_branch:
             mock_branch.return_value = branch_value
             result = git.get_commit()
 
@@ -151,7 +151,7 @@ class TestGetCommit:
     def test_get_commit_returns_none_on_error(self, exception):
         """各种错误情况下返回 None"""
         with (
-            patch("swanlab.sdk.internal.probe_python.environment.git.get_branch") as mock_branch,
+            patch("open_run_lab.sdk.internal.probe_python.environment.git.get_branch") as mock_branch,
             patch("subprocess.run") as mock_run,
         ):
             mock_branch.return_value = "main"
@@ -175,9 +175,9 @@ class TestGitGet:
     def test_get_returns_git_snapshot(self, url, branch, commit):
         """get() 返回 GitSnapshot 实例"""
         with (
-            patch("swanlab.sdk.internal.probe_python.environment.git.get_remote_url", return_value=url),
-            patch("swanlab.sdk.internal.probe_python.environment.git.get_branch", return_value=branch),
-            patch("swanlab.sdk.internal.probe_python.environment.git.get_commit", return_value=commit),
+            patch("open_run_lab.sdk.internal.probe_python.environment.git.get_remote_url", return_value=url),
+            patch("open_run_lab.sdk.internal.probe_python.environment.git.get_branch", return_value=branch),
+            patch("open_run_lab.sdk.internal.probe_python.environment.git.get_commit", return_value=commit),
         ):
             result = git.get()
 

@@ -2,7 +2,7 @@ import threading
 from concurrent.futures import thread as futures_thread
 from unittest.mock import patch
 
-from swanlab.sdk.internal.pkg.executor import SafeThreadPoolExecutor, _is_shutting_down
+from open_run_lab.sdk.internal.pkg.executor import SafeThreadPoolExecutor, _is_shutting_down
 
 
 def test_submit_returns_future():
@@ -14,7 +14,7 @@ def test_submit_returns_future():
 
 def test_submit_sync_on_shutting_down():
     """shutting down 时 submit() 同步执行并返回已完成 Future。"""
-    with patch("swanlab.sdk.internal.pkg.executor._is_shutting_down", return_value=True):
+    with patch("open_run_lab.sdk.internal.pkg.executor._is_shutting_down", return_value=True):
         e = SafeThreadPoolExecutor(max_workers=2)
         future = e.submit(lambda: 42)
         assert future.result() == 42
@@ -23,7 +23,7 @@ def test_submit_sync_on_shutting_down():
 
 def test_submit_captures_exception_on_shutting_down():
     """shutting down 时 submit() 同步执行，异常写入 Future。"""
-    with patch("swanlab.sdk.internal.pkg.executor._is_shutting_down", return_value=True):
+    with patch("open_run_lab.sdk.internal.pkg.executor._is_shutting_down", return_value=True):
         e = SafeThreadPoolExecutor(max_workers=2)
         future = e.submit(lambda: 1 / 0)
         assert future.exception() is not None
@@ -42,7 +42,7 @@ def test_run_async_on_normal():
 def test_run_sync_on_shutting_down():
     """shutting down 时 run() 同步执行。"""
     result = []
-    with patch("swanlab.sdk.internal.pkg.executor._is_shutting_down", return_value=True):
+    with patch("open_run_lab.sdk.internal.pkg.executor._is_shutting_down", return_value=True):
         e = SafeThreadPoolExecutor(max_workers=2)
         e.run(lambda: result.append(1))
         e.shutdown()

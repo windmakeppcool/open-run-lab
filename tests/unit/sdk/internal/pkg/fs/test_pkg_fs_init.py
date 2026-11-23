@@ -7,7 +7,7 @@
 
 import pytest
 
-from swanlab.sdk.internal.pkg.fs import safe_fmt, safe_truncate
+from open_run_lab.sdk.internal.pkg.fs import safe_fmt, safe_truncate
 
 
 class TestSafeFmt:

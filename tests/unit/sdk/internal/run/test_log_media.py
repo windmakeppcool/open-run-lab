@@ -12,15 +12,15 @@ from unittest.mock import MagicMock
 import numpy as np
 import pytest
 
-from swanlab.sdk.internal.pkg import fork
-from swanlab.sdk.internal.run import Run
-from swanlab.sdk.internal.run.transforms.audio import Audio
-from swanlab.sdk.internal.run.transforms.histogram import Histogram
-from swanlab.sdk.internal.run.transforms.image import Image
-from swanlab.sdk.internal.run.transforms.molecule import Molecule
-from swanlab.sdk.internal.run.transforms.object3d import Object3D
-from swanlab.sdk.internal.run.transforms.text import Text
-from swanlab.sdk.internal.run.transforms.video import Video
+from open_run_lab.sdk.internal.pkg import fork
+from open_run_lab.sdk.internal.run import Run
+from open_run_lab.sdk.internal.run.transforms.audio import Audio
+from open_run_lab.sdk.internal.run.transforms.histogram import Histogram
+from open_run_lab.sdk.internal.run.transforms.image import Image
+from open_run_lab.sdk.internal.run.transforms.molecule import Molecule
+from open_run_lab.sdk.internal.run.transforms.object3d import Object3D
+from open_run_lab.sdk.internal.run.transforms.text import Text
+from open_run_lab.sdk.internal.run.transforms.video import Video
 
 # 最小合法 GIF89a（1×1 像素）
 _GIF_1X1 = (

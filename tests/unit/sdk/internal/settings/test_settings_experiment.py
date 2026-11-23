@@ -2,14 +2,14 @@
 @author: cunyue
 @file: test_settings_experiment.py
 @time: 2026/3/6 12:26
-@description: 测试 SwanLab 实验配置
+@description: 测试 OpenRunLab 实验配置
 """
 
 import pytest
 from pydantic import ValidationError
 
-from swanlab.sdk.internal.settings import Settings
-from swanlab.sdk.internal.settings.compat import map_resume_value
+from open_run_lab.sdk.internal.settings import Settings
+from open_run_lab.sdk.internal.settings.compat import map_resume_value
 
 
 def test_experiment_tags_parse(monkeypatch):
@@ -18,19 +18,19 @@ def test_experiment_tags_parse(monkeypatch):
     JSON字符串必须是数组格式，如 `["tag1", "tag2"]`
     """
     # 1. 逗号分隔
-    monkeypatch.setenv("SWANLAB_EXPERIMENT_TAGS", "tag1, tag2, tag3")
+    monkeypatch.setenv("ORLAB_EXPERIMENT_TAGS", "tag1, tag2, tag3")
     s = Settings()
     assert s.experiment.tags == ["tag1", "tag2", "tag3"]
     # 2. JSON数组
-    monkeypatch.setenv("SWANLAB_EXPERIMENT_TAGS", '["tag1", "tag2", "tag3"]')
+    monkeypatch.setenv("ORLAB_EXPERIMENT_TAGS", '["tag1", "tag2", "tag3"]')
     s = Settings()
     assert s.experiment.tags == ["tag1", "tag2", "tag3"]
     # 3. 空值
-    monkeypatch.setenv("SWANLAB_EXPERIMENT_TAGS", "")
+    monkeypatch.setenv("ORLAB_EXPERIMENT_TAGS", "")
     s = Settings()
     assert s.experiment.tags == []
     # 4. JSON 字典
-    monkeypatch.setenv("SWANLAB_EXPERIMENT_TAGS", '{"key": "value"}')
+    monkeypatch.setenv("ORLAB_EXPERIMENT_TAGS", '{"key": "value"}')
     s = Settings()
     assert s.experiment.tags == ['{"key": "value"}']
     # 5. model_validator 解析
@@ -57,13 +57,13 @@ def test_run_resume_parse(monkeypatch):
     """
     测试 RunSettings.resume 字段的解析
     """
-    monkeypatch.setenv("SWANLAB_RUN_RESUME", "allow")
+    monkeypatch.setenv("ORLAB_RUN_RESUME", "allow")
     s = Settings()
     assert s.run.resume == "allow"
-    monkeypatch.setenv("SWANLAB_RUN_RESUME", "never")
+    monkeypatch.setenv("ORLAB_RUN_RESUME", "never")
     s = Settings()
     assert s.run.resume == "never"
-    monkeypatch.delenv("SWANLAB_RUN_RESUME")
+    monkeypatch.delenv("ORLAB_RUN_RESUME")
     s = Settings()
     assert s.run.resume == "never"
     s = Settings.model_validate({"run": {"resume": "allow"}})
@@ -133,6 +133,6 @@ class TestRunDir:
         assert len(s.run.dir) == 50
 
     def test_dir_env_injection(self, monkeypatch):
-        monkeypatch.setenv("SWANLAB_RUN_DIR", "from-env")
+        monkeypatch.setenv("ORLAB_RUN_DIR", "from-env")
         s = Settings()
         assert s.run.dir == "from-env"

@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from swanlab.sdk.internal.core_python.store import (
+from open_run_lab.sdk.internal.core_python.store import (
     LEVELDBLOG_BLOCK_LEN,
     LEVELDBLOG_DATA_LEN,
     LEVELDBLOG_HEADER_IDENT,
@@ -51,26 +51,26 @@ def read_all(path: Path) -> list[bytes]:
 
 class TestWriteAndScan:
     def test_single_record(self, tmp_path: Path):
-        p = tmp_path / "test.swanlab"
-        payload = b"hello swanlab"
+        p = tmp_path / "test.orlab"
+        payload = b"hello orlab"
         write_records(p, payload)
         assert read_all(p) == [payload]
 
     def test_multiple_records(self, tmp_path: Path):
-        p = tmp_path / "test.swanlab"
+        p = tmp_path / "test.orlab"
         payloads = [b"record_1", b"record_2", b"record_3"]
         write_records(p, *payloads)
         assert read_all(p) == payloads
 
     def test_binary_payload(self, tmp_path: Path):
         """任意二进制（如 protobuf 序列化结果）可以原样读回。"""
-        p = tmp_path / "test.swanlab"
+        p = tmp_path / "test.orlab"
         payload = bytes(range(256))
         write_records(p, payload)
         assert read_all(p) == [payload]
 
     def test_scan_returns_none_at_eof(self, tmp_path: Path):
-        p = tmp_path / "test.swanlab"
+        p = tmp_path / "test.orlab"
         write_records(p, b"only_one")
         r = DataStoreReader()
         r.open(str(p))
@@ -80,7 +80,7 @@ class TestWriteAndScan:
 
     def test_empty_file_scan_returns_none(self, tmp_path: Path):
         """只有文件头、无数据记录时，scan 应立即返回 None。"""
-        p = tmp_path / "test.swanlab"
+        p = tmp_path / "test.orlab"
         write_records(p)
         assert read_all(p) == []
 
@@ -93,21 +93,21 @@ class TestWriteAndScan:
 class TestMultiBlockWrite:
     def test_record_spanning_two_blocks(self, tmp_path: Path):
         """数据大于单块可用空间，触发 FIRST / LAST 分块写入。"""
-        p = tmp_path / "test.swanlab"
+        p = tmp_path / "test.orlab"
         payload = b"x" * (LEVELDBLOG_DATA_LEN + 1)
         write_records(p, payload)
         assert read_all(p) == [payload]
 
     def test_record_spanning_three_blocks(self, tmp_path: Path):
         """超过两块，触发 FIRST / MIDDLE / LAST 路径。"""
-        p = tmp_path / "test.swanlab"
+        p = tmp_path / "test.orlab"
         payload = b"y" * (LEVELDBLOG_DATA_LEN * 2 + 1)
         write_records(p, payload)
         assert read_all(p) == [payload]
 
     def test_block_boundary_padding(self, tmp_path: Path):
         """写入数据使剩余空间不足一个 header，应插入 0 填充后继续写下一条。"""
-        p = tmp_path / "test.swanlab"
+        p = tmp_path / "test.orlab"
         w = DataStoreWriter()
         w.open(str(p))
         # 先写一条撑到距块末尾恰好 < HEADER_LEN 的位置
@@ -130,7 +130,7 @@ class TestMultiBlockWrite:
 
 class TestIterator:
     def test_for_loop(self, tmp_path: Path):
-        p = tmp_path / "test.swanlab"
+        p = tmp_path / "test.orlab"
         payloads = [b"alpha", b"beta", b"gamma"]
         write_records(p, *payloads)
         r = DataStoreReader()
@@ -158,21 +158,21 @@ def _write_raw_header(path: Path, ident: bytes, magic: int, version: int):
 
 class TestHeaderValidation:
     def test_invalid_ident(self, tmp_path: Path):
-        p = tmp_path / "bad.swanlab"
+        p = tmp_path / "bad.orlab"
         _write_raw_header(p, b"XXXX", LEVELDBLOG_HEADER_MAGIC, LEVELDBLOG_HEADER_VERSION)
         r = DataStoreReader()
         with pytest.raises(DataStoreError, match="ident"):
             r.open(str(p))
 
     def test_invalid_magic(self, tmp_path: Path):
-        p = tmp_path / "bad.swanlab"
+        p = tmp_path / "bad.orlab"
         _write_raw_header(p, LEVELDBLOG_HEADER_IDENT, 0x0000, LEVELDBLOG_HEADER_VERSION)  # type: ignore
         r = DataStoreReader()
         with pytest.raises(DataStoreError, match="magic"):
             r.open(str(p))
 
     def test_invalid_version(self, tmp_path: Path):
-        p = tmp_path / "bad.swanlab"
+        p = tmp_path / "bad.orlab"
         _write_raw_header(p, LEVELDBLOG_HEADER_IDENT, LEVELDBLOG_HEADER_MAGIC, 99)  # type: ignore
         r = DataStoreReader()
         with pytest.raises(DataStoreError, match="version"):
@@ -180,7 +180,7 @@ class TestHeaderValidation:
 
     def test_legacy_version_rejected(self, tmp_path: Path):
         """旧 SDK（v1）生成的文件应被拒绝，并提示版本不匹配。"""
-        p = tmp_path / "legacy.swanlab"
+        p = tmp_path / "legacy.orlab"
         _write_raw_header(p, LEVELDBLOG_HEADER_IDENT, LEVELDBLOG_HEADER_MAGIC, 1)
         r = DataStoreReader()
         with pytest.raises(DataStoreError, match="version"):
@@ -195,7 +195,7 @@ class TestHeaderValidation:
 class TestChecksumValidation:
     def test_corrupted_data_raises(self, tmp_path: Path):
         """翻转数据区某个字节，scan 时应抛出 DataStoreError。"""
-        p = tmp_path / "test.swanlab"
+        p = tmp_path / "test.orlab"
         write_records(p, b"intact data")
         # 文件头 + record header 之后的第一个数据字节处注入错误
         corrupt_offset = LEVELDBLOG_HEADER_LEN * 2
@@ -210,7 +210,7 @@ class TestChecksumValidation:
         r.close()
 
     def test_iteration_stops_at_corrupted_record(self, tmp_path: Path):
-        p = tmp_path / "test.swanlab"
+        p = tmp_path / "test.orlab"
         first = b"first"
         second = b"second"
         third = b"third"
@@ -235,7 +235,7 @@ class TestChecksumValidation:
 class TestFileHandling:
     def test_open_for_write_exclusive(self, tmp_path: Path):
         """文件已存在时，open 应抛出 FileExistsError。"""
-        p = tmp_path / "test.swanlab"
+        p = tmp_path / "test.orlab"
         p.touch()
         w = DataStoreWriter()
         with pytest.raises(FileExistsError):
@@ -244,7 +244,7 @@ class TestFileHandling:
 
     def test_header_write_failure_cleans_up(self, tmp_path: Path, monkeypatch):
         """header 写入失败时应关闭句柄并删除未初始化完成的文件。"""
-        p = tmp_path / "test.swanlab"
+        p = tmp_path / "test.orlab"
         real_open = open
         closed = []
 
@@ -275,7 +275,7 @@ class TestFileHandling:
 
     def test_data_readable_after_close(self, tmp_path: Path):
         """close() 后数据应已落盘，可被 reader 完整读取。"""
-        p = tmp_path / "test.swanlab"
+        p = tmp_path / "test.orlab"
         payload = b"persist me"
         write_records(p, payload)
         assert read_all(p) == [payload]
@@ -307,14 +307,14 @@ class TestFileHandling:
 class TestSkipMode:
     def test_open_does_not_create_file(self, tmp_path: Path):
         """open() 不创建文件。"""
-        p = tmp_path / "skip.swanlab"
+        p = tmp_path / "skip.orlab"
         w = NullDataStoreWriter()
         w.open(str(p))
         assert not p.exists()
 
     def test_write_is_noop(self, tmp_path: Path):
         """空写入器丢弃写入：不抛错、不落盘。"""
-        p = tmp_path / "skip.swanlab"
+        p = tmp_path / "skip.orlab"
         w = NullDataStoreWriter()
         w.open(str(p))
         w.write(b"record_1")
@@ -323,7 +323,7 @@ class TestSkipMode:
 
     def test_open_twice_is_noop(self, tmp_path: Path):
         """未启用 skip 时重复 open 抛 FileExistsError；启用后始终无副作用。"""
-        p = tmp_path / "skip.swanlab"
+        p = tmp_path / "skip.orlab"
         w = NullDataStoreWriter()
         w.open(str(p))
         w.open(str(p))
@@ -332,7 +332,7 @@ class TestSkipMode:
 
     def test_default_writer_still_persists(self, tmp_path: Path):
         """默认 skip=False 行为不变：文件照常创建、写入、可读回。"""
-        p = tmp_path / "keep.swanlab"
+        p = tmp_path / "keep.orlab"
         w = DataStoreWriter()
         w.open(str(p))
         w.write(b"persist me")

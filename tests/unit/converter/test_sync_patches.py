@@ -2,10 +2,10 @@ from types import SimpleNamespace
 
 import numpy as np
 
-import swanlab.converter.mlf.sync as mlf_sync
-import swanlab.converter.tfb.sync as tfb_sync
-import swanlab.converter.wb.sync as wb_sync
-from swanlab.converter.helper import extract_args
+import open_run_lab.converter.mlf.sync as mlf_sync
+import open_run_lab.converter.tfb.sync as tfb_sync
+import open_run_lab.converter.wb.sync as wb_sync
+from open_run_lab.converter.helper import extract_args
 
 
 class _ConfigSpy:
@@ -19,7 +19,7 @@ class _ConfigSpy:
             self.updates.append(kwargs)
 
 
-class _SwanLabSpy:
+class _OpenRunLabSpy:
     def __init__(self):
         self.config_updates = []
         self.init_calls = []
@@ -56,7 +56,7 @@ def test_extract_args_binds_positional_arguments_by_function_signature():
 
 
 def test_sync_mlflow_accepts_keyword_experiment_id_and_extracts_run_name(monkeypatch):
-    spy = _SwanLabSpy()
+    spy = _OpenRunLabSpy()
 
     class FakeMlflow:
         def set_experiment(self, experiment_name=None, experiment_id=None):
@@ -82,7 +82,7 @@ def test_sync_mlflow_accepts_keyword_experiment_id_and_extracts_run_name(monkeyp
 
     fake_mlflow = FakeMlflow()
     monkeypatch.setattr(mlf_sync, "vendor", SimpleNamespace(mlflow=fake_mlflow))
-    monkeypatch.setattr(mlf_sync, "swanlab", spy)
+    monkeypatch.setattr(mlf_sync, "open_run_lab", spy)
 
     mlf_sync.sync_mlflow(mode="offline")
 
@@ -93,7 +93,7 @@ def test_sync_mlflow_accepts_keyword_experiment_id_and_extracts_run_name(monkeyp
 
 
 def test_sync_tensorboard_scalars_uses_real_parameter_names(monkeypatch):
-    spy = _SwanLabSpy()
+    spy = _OpenRunLabSpy()
 
     class FakeSummaryWriter:
         def __init__(
@@ -130,7 +130,7 @@ def test_sync_tensorboard_scalars_uses_real_parameter_names(monkeypatch):
         "vendor",
         SimpleNamespace(tensorboardX=SimpleNamespace(SummaryWriter=FakeSummaryWriter)),
     )
-    monkeypatch.setattr(tfb_sync, "swanlab", spy)
+    monkeypatch.setattr(tfb_sync, "open_run_lab", spy)
 
     tfb_sync.sync_tensorboardX()
     writer = FakeSummaryWriter(log_dir="runs/tb")
@@ -165,7 +165,7 @@ def test_convert_tb_image_detaches_tensor_before_numpy(monkeypatch):
 
 
 def test_sync_wandb_config_update_forwards_keyword_values(monkeypatch):
-    spy = _SwanLabSpy()
+    spy = _OpenRunLabSpy()
 
     class FakeRun:
         def log(self, data=None, step=None, commit=None, sync=None):
@@ -206,7 +206,7 @@ def test_sync_wandb_config_update_forwards_keyword_values(monkeypatch):
 
     fake_wandb = FakeWandb()
     monkeypatch.setattr(wb_sync, "vendor", SimpleNamespace(wandb=fake_wandb))
-    monkeypatch.setattr(wb_sync, "swanlab", spy)
+    monkeypatch.setattr(wb_sync, "open_run_lab", spy)
 
     wb_sync.sync_wandb()
     FakeConfig().update(lr=0.01, allow_val_change=True)

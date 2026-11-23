@@ -12,8 +12,8 @@ from pathlib import Path
 import pytest
 from google.protobuf.timestamp_pb2 import Timestamp
 
-from swanlab.proto.swanlab.metric.data.v1.data_pb2 import MediaItem
-from swanlab.sdk.internal.run.transforms.video import Video
+from open_run_lab.proto.orlab.metric.data.v1.data_pb2 import MediaItem
+from open_run_lab.sdk.internal.run.transforms.video import Video
 
 # 最小合法 GIF89a（1×1 像素）
 GIF_BYTES = (
@@ -116,7 +116,7 @@ class TestVideoNesting:
 
 class TestVideoColumnType:
     def test_column_type(self):
-        from swanlab.proto.swanlab.metric.column.v1.column_pb2 import ColumnType
+        from open_run_lab.proto.orlab.metric.column.v1.column_pb2 import ColumnType
 
         # TODO: 服务端 column 暂时不支持 VIDEO，临时回退为 IMAGE
         assert Video.column_type() == ColumnType.COLUMN_TYPE_IMAGE

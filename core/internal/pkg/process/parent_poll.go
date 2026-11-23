@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/swanhubx/swanlab/core/internal/pkg/console"
+	"github.com/open-run-lab/open-run-lab/core/internal/pkg/console"
 )
 
 // parentCheckInterval 在退出响应速度和常驻唤醒开销之间取平衡。

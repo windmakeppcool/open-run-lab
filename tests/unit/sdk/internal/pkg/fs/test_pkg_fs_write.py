@@ -2,7 +2,7 @@
 @author: cunyue
 @file: test_fs_write.py
 @time: 2026/3/11 14:48
-@description: 测试 SwanLab SDK 文件系统辅助函数写入功能
+@description: 测试 OpenRunLab SDK 文件系统辅助函数写入功能
 """
 
 import io
@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from swanlab.sdk.internal.pkg.fs.write import safe_write
+from open_run_lab.sdk.internal.pkg.fs.write import safe_write
 
 
 def test_safe_write_to_io_text(tmp_path: Path):
@@ -18,9 +18,9 @@ def test_safe_write_to_io_text(tmp_path: Path):
     file_path = tmp_path / "test_io.txt"
 
     with open(file_path, "w", encoding="utf-8") as f:
-        safe_write(f, "hello swanlab")
+        safe_write(f, "hello orlab")
 
-    assert file_path.read_text(encoding="utf-8") == "hello swanlab"
+    assert file_path.read_text(encoding="utf-8") == "hello orlab"
 
 
 def test_safe_write_to_io_bytes(tmp_path: Path):
@@ -69,7 +69,7 @@ def test_safe_write_path_atomic_text(tmp_path: Path):
     safe_write(file_path, "atomic content", atomic=True)
 
     assert file_path.read_text(encoding="utf-8") == "atomic content"
-    # 验证同级目录下没有残留的 .tmp_swanlab_ 隐藏文件
+    # 验证同级目录下没有残留的 .tmp_orlab_ 隐藏文件
     parent_dir = file_path.parent
     assert len(list(parent_dir.iterdir())) == 1
     assert list(parent_dir.iterdir())[0].name == "test_atomic.txt"
@@ -90,7 +90,7 @@ def test_safe_write_atomic_rollback(monkeypatch, tmp_path: Path):
     def mock_replace(*args):
         raise PermissionError("Simulated Replace Error")
 
-    monkeypatch.setattr("swanlab.sdk.internal.pkg.fs.write.os.replace", mock_replace)
+    monkeypatch.setattr("open_run_lab.sdk.internal.pkg.fs.write.os.replace", mock_replace)
 
     with pytest.raises(PermissionError, match="Simulated Replace Error"):
         safe_write(file_path, "some content that will fail", atomic=True)

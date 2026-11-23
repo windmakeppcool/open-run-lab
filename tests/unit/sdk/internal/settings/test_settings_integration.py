@@ -2,12 +2,12 @@
 @author: cunyue
 @file: test_settings_integration.py
 @time: 2026/3/10 15:32
-@description: 测试 SwanLab 集成配置
+@description: 测试 OpenRunLab 集成配置
 """
 
 import pytest
 
-from swanlab.sdk.internal.settings import Settings
+from open_run_lab.sdk.internal.settings import Settings
 
 
 def test_integration_nested_env_parse(monkeypatch):
@@ -15,8 +15,8 @@ def test_integration_nested_env_parse(monkeypatch):
     测试通过 Pydantic 标准嵌套环境变量解析 Integration 配置，
     验证 max_split=1 的拦截器是否生效。
     """
-    monkeypatch.setenv("SWANLAB_INTEGRATION_WEBHOOK_URL", "https://nested.hook.com")
-    monkeypatch.setenv("SWANLAB_INTEGRATION_WEBHOOK_VALUE", "nested_token")
+    monkeypatch.setenv("ORLAB_INTEGRATION_WEBHOOK_URL", "https://nested.hook.com")
+    monkeypatch.setenv("ORLAB_INTEGRATION_WEBHOOK_VALUE", "nested_token")
 
     s = Settings()
 
@@ -28,8 +28,8 @@ def test_integration_env_priority(monkeypatch):
     """
     测试当同时存在新旧环境变量时，新版嵌套变量（通过 dict 重组）应当覆盖 default_factory 的旧变量
     """
-    monkeypatch.setenv("SWANLAB_WEBHOOK", "https://legacy.hook.com")  # 应该被覆盖
-    monkeypatch.setenv("SWANLAB_INTEGRATION_WEBHOOK_URL", "https://new.hook.com")  # 优先级更高
+    monkeypatch.setenv("ORLAB_WEBHOOK", "https://legacy.hook.com")  # 应该被覆盖
+    monkeypatch.setenv("ORLAB_INTEGRATION_WEBHOOK_URL", "https://new.hook.com")  # 优先级更高
 
     s = Settings()
 
@@ -39,7 +39,7 @@ def test_integration_env_priority(monkeypatch):
 
 @pytest.mark.parametrize("timeout", ["abc"])
 def test_webhook_timeout_must_be_int(monkeypatch, timeout):
-    monkeypatch.setenv("SWANLAB_WEBHOOK_TIMEOUT", timeout)
+    monkeypatch.setenv("ORLAB_WEBHOOK_TIMEOUT", timeout)
 
     with pytest.raises(ValueError):
         Settings()

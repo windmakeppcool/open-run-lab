@@ -2,7 +2,7 @@
 @author: cunyue
 @file: test_log.py
 @time: 2026/3/10
-@description: 测试 swanlab.sdk.pkg.log 诊断日志模块 (极简黑盒版)
+@description: 测试 open_run_lab.sdk.pkg.log 诊断日志模块 (极简黑盒版)
 """
 
 import logging
@@ -11,7 +11,7 @@ import stat
 
 import pytest
 
-import swanlab.sdk.internal.pkg.console.log as log_mod
+import open_run_lab.sdk.internal.pkg.console.log as log_mod
 
 
 def test_log_lifecycle_and_output(tmp_path):

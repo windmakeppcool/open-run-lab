@@ -2,13 +2,13 @@
 @author: cunyue
 @file: test_pkg_constraints.py
 @time: 2026/3/13
-@description: 测试 swanlab.sdk.internal.pkg.constraints 字段约束模块
+@description: 测试 open_run_lab.sdk.internal.pkg.constraints 字段约束模块
 """
 
 import pytest
 from pydantic import TypeAdapter, ValidationError
 
-from swanlab.sdk.internal.pkg.constraints import (
+from open_run_lab.sdk.internal.pkg.constraints import (
     Description,
     ExperimentName,
     Group,
@@ -333,13 +333,13 @@ class TestSettingsUsesConstraints:
     """
 
     def test_project_name_constraint_respected(self):
-        from swanlab.sdk.internal.settings.experiment import ProjectSettings
+        from open_run_lab.sdk.internal.settings.experiment import ProjectSettings
 
         with pytest.raises(ValidationError):
             ProjectSettings(name="invalid name!")  # space not allowed
 
     def test_project_name_valid(self):
-        from swanlab.sdk.internal.settings.experiment import ProjectSettings
+        from open_run_lab.sdk.internal.settings.experiment import ProjectSettings
 
         s = ProjectSettings(name="valid-project")
         assert s.name == "valid-project"
@@ -354,37 +354,37 @@ class TestSettingsUsesConstraints:
         ],
     )
     def test_project_name_factory_env_var(self, monkeypatch, env_value, expected):
-        from swanlab.sdk.internal.settings.experiment import ProjectSettings
+        from open_run_lab.sdk.internal.settings.experiment import ProjectSettings
 
-        monkeypatch.setenv("SWANLAB_PROJ_NAME", env_value)
+        monkeypatch.setenv("ORLAB_PROJ_NAME", env_value)
         assert ProjectSettings().name == expected
 
     def test_experiment_name_too_long(self):
-        from swanlab.sdk.internal.settings.experiment import ExperimentSettings
+        from open_run_lab.sdk.internal.settings.experiment import ExperimentSettings
 
         with pytest.raises(ValidationError):
             ExperimentSettings(name="x" * 513)
 
     def test_run_id_constraint_respected(self):
-        from swanlab.sdk.internal.settings.experiment import RunSettings
+        from open_run_lab.sdk.internal.settings.experiment import RunSettings
 
         with pytest.raises(ValidationError):
             RunSettings(id="run/id")  # / not allowed
 
     def test_run_id_valid(self):
-        from swanlab.sdk.internal.settings.experiment import RunSettings
+        from open_run_lab.sdk.internal.settings.experiment import RunSettings
 
         s = RunSettings(id="My-Run_001")
         assert s.id == "My-Run_001"
 
     def test_hex_color_constraint_respected(self):
-        from swanlab.sdk.internal.settings.experiment import ExperimentSettings
+        from open_run_lab.sdk.internal.settings.experiment import ExperimentSettings
 
         with pytest.raises(ValidationError):
             ExperimentSettings(color="#ZZZ")
 
     def test_hex_color_valid(self):
-        from swanlab.sdk.internal.settings.experiment import ExperimentSettings
+        from open_run_lab.sdk.internal.settings.experiment import ExperimentSettings
 
         s = ExperimentSettings(color="#528d59")
         assert s.color == "#528d59"

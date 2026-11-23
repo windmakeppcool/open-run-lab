@@ -54,14 +54,14 @@ func TestDebugGatedByEnv(t *testing.T) {
 	}
 }
 
-func TestInfoPrintsSwanlabPrefix(t *testing.T) {
+func TestInfoPrintsOrlabPrefix(t *testing.T) {
 	oldColor := colorEnabled
 	colorEnabled = false
 	defer func() { colorEnabled = oldColor }()
 	out := captureStderr(func() { Info("hello", "world") })
 	trimmed := strings.TrimSpace(out)
-	if !strings.HasPrefix(trimmed, "swanlab:") {
-		t.Fatalf("missing 'swanlab:' prefix in %q", out)
+	if !strings.HasPrefix(trimmed, "orlab:") {
+		t.Fatalf("missing 'orlab:' prefix in %q", out)
 	}
 	if !strings.Contains(trimmed, "hello world") {
 		t.Fatalf("missing message in %q", out)

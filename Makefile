@@ -56,7 +56,7 @@ clean:
 	@bash scripts/clean_pycache.sh .
 
 # ----------------------------------
-# Python package (swanlab/)
+# Python package (open_run_lab/)
 # ----------------------------------
 .PHONY:  init sync format proto unit bench clean build publish link-skills unlink-skills relink-skills
 
@@ -79,10 +79,10 @@ bench:
 
 build:
 	@if [ -n "$(VERSION)" ]; then \
-		python -c "import json; data=json.load(open('swanlab/package.json')); data['version']='$(VERSION)'; json.dump(data,open('swanlab/package.json','w'),indent=2)" && \
-		echo "Updated swanlab/package.json version to $(VERSION)"; \
+		python -c "import json; data=json.load(open('open_run_lab/package.json')); data['version']='$(VERSION)'; json.dump(data,open('open_run_lab/package.json','w'),indent=2)" && \
+		echo "Updated open_run_lab/package.json version to $(VERSION)"; \
 	else \
-		echo "VERSION not set, using default version in swanlab/package.json"; \
+		echo "VERSION not set, using default version in open_run_lab/package.json"; \
 	fi
 	uv build
 

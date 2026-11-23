@@ -12,8 +12,8 @@ from unittest.mock import MagicMock
 import pytest
 import yaml
 
-from swanlab.sdk.internal.bus import ConfigEvent
-from swanlab.sdk.internal.run.components.config import (
+from open_run_lab.sdk.internal.bus import ConfigEvent
+from open_run_lab.sdk.internal.run.components.config import (
     Config,
     config,
     create_run_config,
@@ -151,7 +151,7 @@ class TestSkipStore:
     """online + core.skip_store：config.yaml 不落盘，内容随 ConfigEvent 内联上传云端"""
 
     def test_bind_never_writes_file(self, tmp_path):
-        """绑定与后续写入均不落盘，也不重建父目录（swanlog 目录树必须保持不存在）"""
+        """绑定与后续写入均不落盘，也不重建父目录（orlab-log 目录树必须保持不存在）"""
         cfg = Config()
         config_file = tmp_path / "files" / "config.yaml"
 

@@ -2,13 +2,13 @@
 @author: cunyue, nexisato
 @file: bench_async_log.py
 @time: 2026/9/4
-@description: swanlab.log vs swanlab.async_log (threading 模式) 性能对比基准测试
+@description: open_run_lab.log vs open_run_lab.async_log (threading 模式) 性能对比基准测试
 
 对比维度：
   1. 上报模式：
-     - no_sdk:    纯计算基线（无任何 SwanLab 开销，仅 macro 作为 0% 黄金基准）
-     - sync_log:  swanlab.log(data, step=step) 同步上报
-     - async_log: swanlab.async_log(lambda: data, step=step, mode="threading") 异步上报
+     - no_sdk:    纯计算基线（无任何 OpenRunLab 开销，仅 macro 作为 0% 黄金基准）
+     - sync_log:  open_run_lab.log(data, step=step) 同步上报
+     - async_log: open_run_lab.async_log(lambda: data, step=step, mode="threading") 异步上报
   2. 指标规模：
      - 10 keys:   常规训练常用标量（loss, acc, lr, 层权重/梯度模长等）
      - 100 keys:  宽/层级命名空间标量（大模型各层细节监控）
@@ -124,7 +124,7 @@ def run_worker(
     :param warmup: 预热步骤数（耗时不计入统计）
     :param workload_ms: macro 模式下的每步模拟训练耗时 (ms)
     """
-    tmp_log_dir = tempfile.mkdtemp(prefix="swanlab_bench_")
+    tmp_log_dir = tempfile.mkdtemp(prefix="orlab_bench_")
     call_latencies_ns: List[int] = []
     step_latencies_ns: List[int] = []
 
@@ -134,27 +134,27 @@ def run_worker(
 
     try:
         if mode != "no_sdk":
-            import swanlab
+            import open_run_lab
 
             # 统一使用 offline 模式排除网络波动，设置 log_level 减少控制台干扰
-            swanlab.init(
+            open_run_lab.init(
                 project="benchmarks",
                 experiment_name=f"bench_{mode}_{num_keys}k_{test_type}",
                 mode="offline",
                 log_level="warning",
                 log_dir=tmp_log_dir,
             )
-            finish_fn = swanlab.finish
+            finish_fn = open_run_lab.finish
             if mode == "sync_log":
 
                 def sync_log_fn(d: Dict[str, float], s: int) -> None:
-                    swanlab.log(d, step=s)
+                    open_run_lab.log(d, step=s)
 
                 log_fn = sync_log_fn
             else:
 
                 def async_log_fn(d: Dict[str, float], s: int) -> Any:
-                    return swanlab.async_log(lambda d=d: d, step=s, mode="threading")
+                    return open_run_lab.async_log(lambda d=d: d, step=s, mode="threading")
 
                 log_fn = async_log_fn
 
@@ -289,7 +289,7 @@ def print_report(
 ) -> None:
     """打印格式化的高亮性能对比报告。"""
     print("\n" + "=" * 108)
-    print("  SwanLab Benchmark: swanlab.log vs swanlab.async_log (threading 模式)")
+    print("  OpenRunLab Benchmark: open_run_lab.log vs open_run_lab.async_log (threading 模式)")
     print("=" * 108)
 
     # 1. Micro Benchmark: 纯主线程单次调用延迟对比
@@ -434,7 +434,7 @@ def test_bench_log_vs_async_log():
 
 
 def main():
-    parser = argparse.ArgumentParser(description="SwanLab: swanlab.log vs swanlab.async_log Benchmark")
+    parser = argparse.ArgumentParser(description="OpenRunLab: open_run_lab.log vs open_run_lab.async_log Benchmark")
     parser.add_argument("--worker", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--mode", type=str, choices=["no_sdk", "sync_log", "async_log"], default="sync_log")
     parser.add_argument("--keys", type=int, default=10, help="指标 key 数量 (10 或 100)")

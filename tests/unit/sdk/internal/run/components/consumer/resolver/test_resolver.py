@@ -9,9 +9,9 @@ merge/replace 语义（含 step_sync 默认值 = is_custom_x(x_axis)）。
 
 import pytest
 
-from swanlab.proto.swanlab.metric.column.v1.column_pb2 import ColumnType
-from swanlab.sdk.internal.bus.events import MetricDefineEvent
-from swanlab.sdk.internal.run.components.consumer.resolver import DefinitionResolver
+from open_run_lab.proto.orlab.metric.column.v1.column_pb2 import ColumnType
+from open_run_lab.sdk.internal.bus.events import MetricDefineEvent
+from open_run_lab.sdk.internal.run.components.consumer.resolver import DefinitionResolver
 
 
 def _define(resolver: DefinitionResolver, key: str, is_glob: bool = False) -> None:

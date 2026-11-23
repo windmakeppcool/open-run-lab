@@ -1,0 +1,65 @@
+syntax = "proto3";
+
+package orlab.grpc.core.v1;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+import "orlab/grpc/core/v1/core.proto";
+import "orlab/run/v1/run.proto";
+import "orlab/settings/core/v1/core.proto";
+
+option go_package = "github.com/open-run-lab/open-run-lab/core/proto/orlab/grpc/core/v1;corev1";
+
+// CoreSyncService 用于启动本地日志读取、云端同步服务
+service CoreSyncService {
+    // DeliverSyncStart 接收 CoreSettings，校验并启动本地日志读取
+    rpc DeliverSyncStart(DeliverSyncStartRequest) returns (DeliverSyncStartResponse);
+
+    // DeliverSyncFlush 结束本地日志读取，开启云端同步
+    rpc DeliverSyncFlush(google.protobuf.Empty) returns (DeliverSyncFlushResponse);
+
+    // GetOperationStats 返回 Core 当前运行状态和上传进度快照。
+    rpc GetOperationStats(google.protobuf.Empty) returns (GetOperationStatsResponse);
+
+    // ConfirmSyncFinish 结束同步，副作用清理，退出
+    rpc ConfirmSyncFinish(google.protobuf.Empty) returns (ConfirmSyncFinishResponse);
+}
+
+// DeliverSyncStart 请求，同步服务启动配置
+message DeliverSyncStartRequest {
+    orlab.settings.core.v1.CoreSettings core_settings = 1; // 同步服务启动配置
+    string workspace                                    = 2; // 用于标识同步到哪个工作空间上，如果不传递，默认使用start record中记录的工作空间
+    string project                                      = 3; // 用于标识同步到哪个项目上，如果不传递，默认使用start record中记录的项目
+    string id                                           = 4; // 运行id，如果run id在对应实验上已经存在，则等同于resume模式
+    SyncRange range                                     = 5; // 仅同步指定范围内的指标与终端日志，如果不传递则全量同步
+}
+
+// SyncRange 指定同步范围，所有字段均可选，未设置（或时间戳为0）表示该维度不限制。
+//
+// step 范围对 scalar/media 记录生效，时间范围对 scalar/media/log 记录生效，
+// 两者同时设置时取交集。时间范围与 step 范围的上下界均为闭区间。
+message SyncRange {
+    optional int64 start_step            = 1; // 起始step（含），仅对 scalar/media 生效
+    optional int64 end_step              = 2; // 结束step（含），仅对 scalar/media 生效
+    google.protobuf.Timestamp start_time = 3; // 起始时间（含），按记录的指标/日志时间过滤
+    google.protobuf.Timestamp end_time   = 4; // 结束时间（含），按记录的指标/日志时间过滤
+}
+
+// DeliverSyncStartResponse 同步服务启动响应
+message DeliverSyncStartResponse {
+    bool success   = 1; // 请求是否成功
+    string message = 2; // 请求失败的响应
+}
+
+// DeliverSyncFlushResponse 开启云端同步响应
+message DeliverSyncFlushResponse {
+    bool success   = 1; // 请求是否成功
+    string message = 2; // 请求失败的响应
+    string path    = 3; // 对应的实验路径，格式为 /:username/:project_name/:slug(run_id)
+}
+
+// ConfirmSyncFinishResponse 同步服务结束响应
+message ConfirmSyncFinishResponse {
+    bool success   = 1; // 请求是否成功
+    string message = 2; // 请求失败的响应
+}

@@ -2,7 +2,7 @@
 @author: cunyue
 @file: test_cmd_helper.py
 @time: 2026/3/14
-@description: 测试 swanlab.sdk.cmd.guard 中的装饰器
+@description: 测试 open_run_lab.sdk.cmd.guard 中的装饰器
 """
 
 import threading
@@ -10,7 +10,7 @@ import time
 
 import pytest
 
-from swanlab.sdk.cmd.guard import with_cmd_lock, with_run, without_run
+from open_run_lab.sdk.cmd.guard import with_cmd_lock, with_run, without_run
 
 
 class TestWithCmdLock:
@@ -55,18 +55,18 @@ class TestWithCmdLock:
 class TestWithRun:
     def test_raises_when_no_run(self, monkeypatch):
         """无活跃 Run 时，应抛出 RuntimeError"""
-        monkeypatch.setattr("swanlab.sdk.cmd.guard.has_run", lambda: False)
+        monkeypatch.setattr("open_run_lab.sdk.cmd.guard.has_run", lambda: False)
 
         @with_run("test_cmd")
         def my_func(run):
             return "ok"
 
-        with pytest.raises(RuntimeError, match="`swanlab.test_cmd` requires an active Run"):
+        with pytest.raises(RuntimeError, match="`open_run_lab.test_cmd` requires an active Run"):
             my_func()
 
     def test_passes_run_when_active(self, monkeypatch):
         """有活跃 Run 时，装饰器不会抛出异常"""
-        monkeypatch.setattr("swanlab.sdk.cmd.guard.has_run", lambda: True)
+        monkeypatch.setattr("open_run_lab.sdk.cmd.guard.has_run", lambda: True)
 
         @with_run("test_cmd")
         def my_func(x, y):
@@ -89,9 +89,9 @@ class TestWithRun:
 class TestWithRunAllowFinished:
     def test_warns_when_no_run_and_allow_finished(self, monkeypatch):
         """has_run() 为 False 且 allow_finished=True 时，打印统一警告并返回 None"""
-        monkeypatch.setattr("swanlab.sdk.cmd.guard.has_run", lambda: False)
+        monkeypatch.setattr("open_run_lab.sdk.cmd.guard.has_run", lambda: False)
         warnings = []
-        monkeypatch.setattr("swanlab.sdk.cmd.guard.console.warning", lambda msg, *a, **kw: warnings.append(msg))
+        monkeypatch.setattr("open_run_lab.sdk.cmd.guard.console.warning", lambda msg, *a, **kw: warnings.append(msg))
 
         @with_run("finish", allow_finished=True)
         def my_func():
@@ -99,35 +99,35 @@ class TestWithRunAllowFinished:
 
         result = my_func()
         assert result is None
-        assert warnings == ["SwanLab Run has already finished or has not started."]
+        assert warnings == ["OpenRunLab Run has already finished or has not started."]
 
     def test_raises_when_no_run_and_not_allow_finished(self, monkeypatch):
         """allow_finished=False 时仍应抛异常"""
-        monkeypatch.setattr("swanlab.sdk.cmd.guard.has_run", lambda: False)
+        monkeypatch.setattr("open_run_lab.sdk.cmd.guard.has_run", lambda: False)
 
         @with_run("log", allow_finished=False)
         def my_func():
             return "should not reach"
 
-        with pytest.raises(RuntimeError, match="`swanlab.log` requires an active Run"):
+        with pytest.raises(RuntimeError, match="`open_run_lab.log` requires an active Run"):
             my_func()
 
 
 class TestWithoutRun:
     def test_raises_when_run_exists(self, monkeypatch):
         """有活跃 Run 时，应抛出 RuntimeError"""
-        monkeypatch.setattr("swanlab.sdk.cmd.guard.has_run", lambda: True)
+        monkeypatch.setattr("open_run_lab.sdk.cmd.guard.has_run", lambda: True)
 
         @without_run("test_cmd")
         def my_func():
             return "ok"
 
-        with pytest.raises(RuntimeError, match="`swanlab.test_cmd` requires no active Run"):
+        with pytest.raises(RuntimeError, match="`open_run_lab.test_cmd` requires no active Run"):
             my_func()
 
     def test_executes_when_no_run(self, monkeypatch):
         """无活跃 Run 时，应正常执行"""
-        monkeypatch.setattr("swanlab.sdk.cmd.guard.has_run", lambda: False)
+        monkeypatch.setattr("open_run_lab.sdk.cmd.guard.has_run", lambda: False)
 
         @without_run("test_cmd")
         def my_func(x, y):

@@ -9,8 +9,8 @@ from pathlib import Path
 
 import pytest
 
-from swanlab.proto.swanlab.save.v1.save_pb2 import SaveType
-from swanlab.sdk.internal.probe_python.utils import make_save_record
+from open_run_lab.proto.orlab.save.v1.save_pb2 import SaveType
+from open_run_lab.sdk.internal.probe_python.utils import make_save_record
 
 
 class TestMakeSaveRecord:

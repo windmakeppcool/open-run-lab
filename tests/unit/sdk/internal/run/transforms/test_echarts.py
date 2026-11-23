@@ -11,8 +11,8 @@ from pathlib import Path
 import pyecharts.charts
 import pytest
 
-from swanlab.proto.swanlab.metric.column.v1.column_pb2 import ColumnType
-from swanlab.sdk.internal.run.transforms.echarts import ECharts
+from open_run_lab.proto.orlab.metric.column.v1.column_pb2 import ColumnType
+from open_run_lab.sdk.internal.run.transforms.echarts import ECharts
 
 
 class TestEChartsInit:

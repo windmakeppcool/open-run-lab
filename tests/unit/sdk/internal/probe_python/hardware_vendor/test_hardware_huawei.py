@@ -2,7 +2,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from swanlab.sdk.internal.probe_python.hardware_vendor.accelerator.huawei import (
+from open_run_lab.sdk.internal.probe_python.hardware_vendor.accelerator.huawei import (
     AscendNPU,
 )
 

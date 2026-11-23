@@ -10,8 +10,8 @@ from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
 
-from swanlab.sdk.internal.probe_python.hardware_vendor.memory import Memory, bytes_to_snapshot
-from swanlab.sdk.internal.probe_python.typings import MemorySnapshot, PlatformSlug, SystemShim
+from open_run_lab.sdk.internal.probe_python.hardware_vendor.memory import Memory, bytes_to_snapshot
+from open_run_lab.sdk.internal.probe_python.typings import MemorySnapshot, PlatformSlug, SystemShim
 
 _GB = 1024**3
 _MB = 1024**2

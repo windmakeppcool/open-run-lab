@@ -1,12 +1,12 @@
-// Package console 是 SwanLab core 面向用户的终端输出模块，并桥接到诊断日志子包 log。
-// 镜像 swanlab/sdk/internal/pkg/console：
-//   - info:    "swanlab: <message>"，蓝色前缀
-//   - debug:   loguru 风格，灰色；仅 SWANLAB_DEBUG=true 时输出
+// Package console 是 OpenRunLab core 面向用户的终端输出模块，并桥接到诊断日志子包 log。
+// 镜像 open_run_lab/sdk/internal/pkg/console：
+//   - info:    "orlab: <message>"，蓝色前缀
+//   - debug:   loguru 风格，灰色；仅 ORLAB_DEBUG=true 时输出
 //   - warning: loguru 风格，黄色
 //   - error:   loguru 风格，红色
 //   - trace:   error 变体，额外记录 goroutine 栈
 //
-// SWANLAB_DEBUG=true 时，所有级别都会同步镜像到诊断日志文件（经 log 子包）。
+// ORLAB_DEBUG=true 时，所有级别都会同步镜像到诊断日志文件（经 log 子包）。
 package console
 
 import (
@@ -19,10 +19,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/swanhubx/swanlab/core/internal/pkg/console/log"
+	"github.com/open-run-lab/open-run-lab/core/internal/pkg/console/log"
 )
 
-const name = "swanlab"
+const name = "orlab"
 
 // ANSI 样式码（仅 colorEnabled 时生效）
 const (
@@ -37,7 +37,7 @@ const (
 
 var (
 	mu           sync.Mutex // 串行化终端写入，保证日志行完整不被打断
-	debugEnabled = truthy(os.Getenv("SWANLAB_DEBUG"))
+	debugEnabled = truthy(os.Getenv("ORLAB_DEBUG"))
 	colorEnabled = detectColor()
 	thisFile     string
 )
@@ -55,7 +55,7 @@ func Init(dir string) error { return log.Init(dir) }
 // Reset 将诊断日志重置为初始的内存缓冲状态。
 func Reset() { log.Reset() }
 
-// Debug 输出 loguru 风格的调试日志。SWANLAB_DEBUG=false 时无操作。
+// Debug 输出 loguru 风格的调试日志。ORLAB_DEBUG=false 时无操作。
 //
 //	2026-03-14 10:23:45.124 | DEBUG    | pkg.func:line - message
 func Debug(args ...any) {
@@ -69,7 +69,7 @@ func Debug(args ...any) {
 // Debugf 是 Debug 的格式化变体。
 func Debugf(format string, args ...any) { Debug(fmt.Sprintf(format, args...)) }
 
-// Info 输出形如 "swanlab: <message>" 的通知。
+// Info 输出形如 "orlab: <message>" 的通知。
 func Info(args ...any) {
 	msg := joinArgs(args)
 	writeTTY(paint(name, ansiBlue+ansiBold) + ":" + " " + msg)
@@ -199,7 +199,7 @@ func detectColor() bool {
 	return false
 }
 
-// truthy 判断 v 是否为 SWANLAB_DEBUG 的真值。
+// truthy 判断 v 是否为 ORLAB_DEBUG 的真值。
 func truthy(v string) bool {
 	switch strings.ToLower(strings.TrimSpace(v)) {
 	case "true", "1", "yes", "on":

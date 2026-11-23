@@ -1,6 +1,8 @@
-# 为 SwanLab 作出贡献
+# 为 OpenRunLab 作出贡献
 
-有兴趣为 SwanLab 做出贡献吗？我们欢迎社区的贡献！本指南讨论`swanlab`的开发工作流和内部结构。
+有兴趣为 OpenRunLab 做出贡献吗？我们欢迎社区的贡献！本指南讨论 `open_run_lab` 的开发工作流和内部结构。
+
+> 本项目非 SwanLab 官方仓库，上游问题请提交到上游。
 
 ## 📦 目录
 
@@ -19,20 +21,19 @@
 
 ## 标准开发流程
 
-1. 浏览 GitHub 上的[Issues](https://github.com/SwanHubX/SwanLab/issues)，查看你愿意添加的功能或修复的错误，以及它们是否已被
+1. 浏览本项目的 Issues，查看你愿意添加的功能或修复的错误，以及它们是否已被
    Pull Request。
 
-   - 如果没有，请创建一个[新 Issue](https://github.com/SwanHubX/SwanLab/issues/new/choose)——这将帮助项目跟踪功能请求和错误报告，并确保不重复工作。
+   - 如果没有，请创建一个新 Issue——这将帮助项目跟踪功能请求和错误报告，并确保不重复工作。
 
-2. 如果你是第一次为开源项目贡献代码，请转到 [本项目首页](https://github.com/SwanHubX/SwanLab) 并单击右上角的"Fork"
+2. 如果你是第一次为开源项目贡献代码，请转到本项目仓库并单击右上角的"Fork"
    按钮。这将创建你用于开发的仓库的个人副本。
 
-   - 将 Fork 的项目克隆到你的计算机，并添加指向`swanlab`项目的远程链接：
+   - 将 Fork 的项目克隆到你的计算机，并在仓库目录内开发：
 
    ```bash
-   git clone https://github.com/<your-username>/swanlab.git
-   cd swanlab
-   git remote add upstream https://github.com/swanhubx/swanlab.git
+   git clone https://github.com/<your-username>/open-run-lab.git
+   cd open-run-lab
    ```
 
 3. 开发你的贡献
@@ -41,7 +42,7 @@
 
    ```bash
    git checkout main
-   git pull upstream main
+   git pull origin main
    ```
 
    - 创建一个`git`分支，您将在其中发展您的贡献。分支使用`<type>/<short-dash-separated-description>`的命名方式，例如：
@@ -162,16 +163,16 @@ PR；同时拦截重复 backport（目标分支已包含该 PR 的改动时报�
    ```
 
 3. tag 推送后，[发布 workflow](.github/workflows/publish-to-pypi.yml) 自动完成构建（构建时会以 tag 版本覆写
-   `swanlab/package.json` 中的版本号）→ 发布到 PyPI → 创建 GitHub Release → 发送通知。
+   `open_run_lab/package.json` 中的版本号）→ 发布到 PyPI → 创建 GitHub Release。
 
-> 注：`release/vX.Y` 分支上 `swanlab/package.json` 中残留的 `x.y.0-dev` 版本号是切分支时的遗留，
+> 注：`release/vX.Y` 分支上 `open_run_lab/package.json` 中残留的 `x.y.0-dev` 版本号是切分支时的遗留，
 > 实际发布版本以 tag 为准。
 
 ## 本地开发
 
 ### 环境配置
 
-SwanLab 使用 [uv](https://docs.astral.sh/uv/) 管理依赖和测试，使用 [hatch](https://hatch.pypa.io/) 进行构建，
+OpenRunLab 使用 [uv](https://docs.astral.sh/uv/) 管理依赖和测试，使用 [hatch](https://hatch.pypa.io/) 进行构建，
 请确保本机安装了 `uv`、`make` 与 Python 3.9 及以上版本。
 
 首次配置开发环境（安装全部依赖并挂载 pre-commit 钩子）：
@@ -191,7 +192,7 @@ pre-commit 钩子会在提交时运行 `ruff-check`（不自动修复）与 `ruf
 ### 测试脚本
 
 本地调试时，建议将临时验证脚本放在 `playground/` 目录下（该目录已被 gitignore，不会被误提交），脚本运行时使用的即是
-本地改动后的 swanlab：
+本地改动后的 open_run_lab：
 
 ```bash
 uv run python playground/your_script.py

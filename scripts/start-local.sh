@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# SwanLab 纯本地一键启动脚本
-# 同时启动 swanlab-console 后端（8787）与前端（5173）
+# OpenRunLab 纯本地一键启动脚本
+# 同时启动 orlab-console 后端（8787）与前端（5173）
 # 用法：bash scripts/start-local.sh
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-BACKEND="$ROOT/swanlab-console/backend"
-FRONTEND="$ROOT/swanlab-console/frontend"
+BACKEND="$ROOT/orlab-console/backend"
+FRONTEND="$ROOT/orlab-console/frontend"
 BACKEND_PORT="${PORT:-8787}"
 FRONTEND_PORT="${FRONTEND_PORT:-5173}"
 HEALTH_URL="http://127.0.0.1:${BACKEND_PORT}/api/health"
@@ -27,7 +27,7 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 if [ ! -d "$BACKEND" ] || [ ! -d "$FRONTEND" ]; then
-  echo "未找到 swanlab-console 前后端目录" >&2
+  echo "未找到 orlab-console 前后端目录" >&2
   exit 1
 fi
 

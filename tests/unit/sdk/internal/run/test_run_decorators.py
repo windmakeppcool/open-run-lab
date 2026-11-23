@@ -2,15 +2,15 @@
 @author: cunyue
 @file: test_run_decorators.py
 @time: 2026/3/14
-@description: 测试 swanlab.sdk.internal.run 中的装饰器
+@description: 测试 open_run_lab.sdk.internal.run 中的装饰器
 """
 
 import threading
 
 import pytest
 
-from swanlab.sdk.internal.pkg import fork
-from swanlab.sdk.internal.run import with_api
+from open_run_lab.sdk.internal.pkg import fork
+from open_run_lab.sdk.internal.run import with_api
 
 
 class TestWithApi:
@@ -23,7 +23,7 @@ class TestWithApi:
                 self.alive = True
                 self._api_lock = threading.RLock()
 
-            @with_api(cmd="swanlab.my_method()")
+            @with_api(cmd="open_run_lab.my_method()")
             def my_method(self, x, y):
                 return x + y
 
@@ -40,12 +40,12 @@ class TestWithApi:
                 self.alive = False
                 self._api_lock = threading.RLock()
 
-            @with_api(cmd="swanlab.my_method()")
+            @with_api(cmd="open_run_lab.my_method()")
             def my_method(self):
                 return "ok"
 
         run = MockRun()
-        with pytest.raises(RuntimeError, match="`swanlab.my_method\\(\\)` requires an active Run"):
+        with pytest.raises(RuntimeError, match="`open_run_lab.my_method\\(\\)` requires an active Run"):
             run.my_method()
 
     def test_error_message_contains_cmd(self):
@@ -72,7 +72,7 @@ class TestWithApi:
                 self._init_pid = 0  # 模拟 fork：PID 不匹配
                 self._api_lock = threading.RLock()
 
-            @with_api(cmd="swanlab.log()")
+            @with_api(cmd="open_run_lab.log()")
             def log(self):
                 pass
 
@@ -89,7 +89,7 @@ class TestWithApi:
                 self.alive = False
                 self._api_lock = threading.RLock()
 
-            @with_api(cmd="swanlab.log()")
+            @with_api(cmd="open_run_lab.log()")
             def log(self):
                 pass
 
@@ -133,7 +133,7 @@ class TestWithApi:
         """装饰器应保留被装饰方法的 __name__ 和 __doc__"""
 
         class MockRun:
-            @with_api(cmd="swanlab.my_method()")
+            @with_api(cmd="open_run_lab.my_method()")
             def my_method(self):
                 """My docstring"""
 

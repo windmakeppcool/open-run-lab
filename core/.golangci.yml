@@ -63,7 +63,7 @@ formatters:
   settings:
     goimports:
       local-prefixes:
-        - github.com/swanhubx/swanlab/core
+        - github.com/open-run-lab/open-run-lab/core
   exclusions:
     generated: lax
     paths:

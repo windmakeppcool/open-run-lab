@@ -1,6 +1,6 @@
-# SwanLab Protobuf Definitions
+# OpenRunLab Protobuf Definitions
 
-本目录包含 SwanLab 运行时产出的所有结构化数据的 Protobuf 类型定义。
+本目录包含 OpenRunLab 运行时产出的所有结构化数据的 Protobuf 类型定义。协议定义复用自 SwanLab（Apache-2.0），详见根目录 [NOTICE](../NOTICE)。
 
 ## 设计思路
 
@@ -14,7 +14,7 @@
 
 ```
 protos/
-└── swanlab/
+└── orlab/
     ├── record/
     │   └── v1/
     │       └── record.proto            # 顶层信封 Record
@@ -47,6 +47,10 @@ protos/
     │       └── v1/
     │           └── probe.proto         # Probe 硬件采集服务配置（ProbeSettings）
     │
+    ├── operation/
+    │   └── v1/
+    │       └── operation.proto         # 操作统计（GetOperationStatsResponse）
+    │
     └── grpc/
         ├── core/
         │   ├── v1/
@@ -61,7 +65,7 @@ protos/
 ## 消息流
 
 ```
-swanlab.init(...)
+open_run_lab.init(...)
   → Record { start: StartRecord }                     # Run 基本信息，写入一次
   → Record { save:  SaveRecord { type=METADATA } }    # 主机与环境快照，写入一次
   → Record { save:  SaveRecord { type=REQUIREMENTS } } # Python 依赖，写入一次
@@ -71,10 +75,10 @@ swanlab.init(...)
 # 训练循环中，首次出现某 key 时先发送列定义
   → Record { column: ColumnRecord { key="loss", type=SCALAR, ... } }
   → Record { column: ColumnRecord { key="img",  type=IMAGE, ... } }
-# 每个指标独立生成一条 Record，swanlab.log({"loss": 0.5, "img": Image(...)}, step=10) 产生两条：
+# 每个指标独立生成一条 Record，open_run_lab.log({"loss": 0.5, "img": Image(...)}, step=10) 产生两条：
   → Record { scalar: ScalarRecord { key="loss", step=10, ... } }
   → Record { media:  MediaRecord  { key="img",  step=10, ... } }
-# 对于直方图来说：swanlab.log({"w": Histogram(...)}, step=10)
+# 对于直方图来说：open_run_lab.log({"w": Histogram(...)}, step=10)
   → Record { histogram: HistogramRecord { key="w", step=10, ... } }
 
 # 终端代理（每行）
@@ -86,7 +90,7 @@ swanlab.init(...)
 # 文件保存
   → Record { save: SaveRecord { name="...", policy=NOW } }
 
-swanlab.finish()
+open_run_lab.finish()
   → Record { finish: FinishRecord { state=FINISHED } }
 ```
 
@@ -153,8 +157,8 @@ swanlab.finish()
 
 ### run — Run 生命周期
 
-- **StartRecord**: 对应 `swanlab.init()`，包含 project、name、description、tags、group、resume 模式等
-- **FinishRecord**: 对应 `swanlab.finish()`，包含运行状态和错误信息
+- **StartRecord**: 对应 `open_run_lab.init()`，包含 project、name、description、tags、group、resume 模式等
+- **FinishRecord**: 对应 `open_run_lab.finish()`，包含运行状态和错误信息
 - **RunState**: `RUNNING` / `FINISHED` / `CRASHED` / `ABORTED`
 - **ResumeMode**: `NEVER` / `ALLOW` / `MUST`
 
@@ -178,9 +182,9 @@ swanlab.finish()
 
 ### save — 文件保存
 
-- **SaveRecord**: 由 `swanlab.save()` 与内部文件保存产生，包含 name、source_path、target_path
+- **SaveRecord**: 由 `open_run_lab.save()` 与内部文件保存产生，包含 name、source_path、target_path
 - **SavePolicy**: `NOW`（立即上传）/ `END`（运行结束时上传）/ `LIVE`（持续监听文件变化）
-- **SaveType**: `CUSTOM` / `CONFIG` / `METADATA` / `REQUIREMENTS` / `CONDA`。`CUSTOM` 用于 `swanlab.save()` 的用户文件；其余四类为内部文件，在 init 阶段各写入一条 SaveRecord
+- **SaveType**: `CUSTOM` / `CONFIG` / `METADATA` / `REQUIREMENTS` / `CONDA`。`CUSTOM` 用于 `open_run_lab.save()` 的用户文件；其余四类为内部文件，在 init 阶段各写入一条 SaveRecord
 
 ### settings — 服务配置
 

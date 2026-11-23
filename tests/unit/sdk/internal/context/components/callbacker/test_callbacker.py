@@ -7,12 +7,12 @@
 
 import pytest
 
-from swanlab.sdk.internal.context.components.callbacker import (
+from open_run_lab.sdk.internal.context.components.callbacker import (
     CallbackManager,
     create_callback_manager,
     global_callbacker,
 )
-from swanlab.sdk.protocol import Callback
+from open_run_lab.sdk.protocol import Callback
 
 
 class _AlphaCallback(Callback):
@@ -64,7 +64,7 @@ class TestCallbackManager:
         assert len(mgr.registered_callbacks) == 0
 
     def test_merge_invalid_type_raises(self):
-        with pytest.raises(TypeError, match="Expected swanlab.Callback"):
+        with pytest.raises(TypeError, match="Expected open_run_lab.Callback"):
             CallbackManager().merge_callbacks(["not_a_callback"])  # type: ignore
 
     def test_remove_callback(self):

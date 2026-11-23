@@ -2,15 +2,15 @@
 @author: cunyue
 @file: test_pkg_builder.py
 @time: 2026/5/8
-@description: 测试 swanlab.sdk.internal.pkg.builder 模块
+@description: 测试 open_run_lab.sdk.internal.pkg.builder 模块
 """
 
 import pytest
 
-from swanlab.proto.swanlab.metric.column.v1.column_pb2 import ColumnClass, ColumnType, SectionType
-from swanlab.proto.swanlab.metric.data.v1.data_pb2 import MediaRecord, ScalarRecord
-from swanlab.sdk.internal.core_python.context import CoreConfig, CoreContext
-from swanlab.sdk.internal.core_python.pkg import builder
+from open_run_lab.proto.orlab.metric.column.v1.column_pb2 import ColumnClass, ColumnType, SectionType
+from open_run_lab.proto.orlab.metric.data.v1.data_pb2 import MediaRecord, ScalarRecord
+from open_run_lab.sdk.internal.core_python.context import CoreConfig, CoreContext
+from open_run_lab.sdk.internal.core_python.pkg import builder
 
 
 def make_ctx(tmp_path, section_rule: int) -> CoreContext:

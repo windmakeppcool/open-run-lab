@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package orlab.settings.core.v1;
+
+option go_package = "github.com/open-run-lab/open-run-lab/core/proto/orlab/settings/core/v1;settingscorev1";
+
+message CoreSettings {
+    string run_id = 1;
+    // Absolute run directory path, formatted according to the current operating system.
+    string run_dir         = 2;
+    int32 section_rule     = 3;
+    int32 record_batch     = 4;
+    double record_interval = 5;
+    int64 save_size        = 6;
+    int64 save_split       = 7;
+    int64 save_part        = 8;
+    int32 save_batch       = 9;
+    // Skip the local Record store (run-*.orlab). Only valid in online mode.
+    bool skip_store        = 10;
+}

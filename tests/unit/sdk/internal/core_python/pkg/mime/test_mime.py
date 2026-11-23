@@ -2,7 +2,7 @@
 @author: cunyue
 @file: test_mime.py
 @time: 2026/7/29
-@description: 测试 swanlab.sdk.internal.core_python.pkg.mime 模块
+@description: 测试 open_run_lab.sdk.internal.core_python.pkg.mime 模块
 
 测试分组：
   - TestGuessTypeRegistered : 已注册扩展（.yaml/.yml）的类型推断
@@ -13,11 +13,11 @@
 
 import pytest
 
-from swanlab.sdk.internal.core_python.pkg.mime import guess_type
+from open_run_lab.sdk.internal.core_python.pkg.mime import guess_type
 
 
 class TestGuessTypeRegistered:
-    @pytest.mark.parametrize("name", ["config.yaml", "a/b/c.yml", "swanlab.yaml", "UPPER.YAML", "Mixed.YmL"])
+    @pytest.mark.parametrize("name", ["config.yaml", "a/b/c.yml", "orlab.yaml", "UPPER.YAML", "Mixed.YmL"])
     def test_yaml_extensions(self, name):
         assert guess_type(name) == "application/yaml"
 

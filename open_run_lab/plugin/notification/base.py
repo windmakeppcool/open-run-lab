@@ -1,0 +1,112 @@
+from abc import abstractmethod
+from pathlib import Path
+from typing import Dict, Optional
+
+from open_run_lab.sdk.internal.pkg.executor import SafeThreadPoolExecutor
+from open_run_lab.sdk.internal.settings import Settings
+from open_run_lab.sdk.protocol import Callback
+
+# ---------------------------------------------------------------------------
+# Message templates
+# ---------------------------------------------------------------------------
+
+_TEMPLATES: Dict[str, Dict[str, str]] = {
+    "en": {
+        "title": "OpenRunLab Message Notification\n",
+        "msg_success": "OpenRunLab | Your experiment completed successfully\n",
+        "msg_error": "Your OpenRunLab experiment encountered an error: {error}\n",
+        "link_text": (
+            "Project: {project}\n"
+            "Workspace: {workspace}\n"
+            "Name: {exp_name}\n"
+            "Description: {description}\n"
+            "Experiment Link: {link}"
+        ),
+    },
+    "zh": {
+        "title": "OpenRunLab 消息通知\n",
+        "msg_success": "OpenRunLab | 您的实验已成功完成\n",
+        "msg_error": "您的 OpenRunLab 实验遇到错误: {error}\n",
+        "link_text": (
+            "项目: {project}\n工作区: {workspace}\n实验名: {exp_name}\n描述: {description}\n实验链接: {link}"
+        ),
+    },
+}
+
+
+# ---------------------------------------------------------------------------
+# URL builder
+# ---------------------------------------------------------------------------
+
+
+def build_run_url(settings: Settings, path: Optional[str]) -> Optional[str]:
+    # 纯本地版本不提供云端实验链接
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Base class
+# ---------------------------------------------------------------------------
+
+
+class NotificationCallback(Callback):
+    """Base class for notification callbacks.
+
+    Uses a shared ``SafeThreadPoolExecutor`` so that ``on_run_finished``
+    returns immediately — the actual HTTP/SMTP call happens in a background
+    thread.  During Python shutdown ``run()`` degrades to synchronous
+    execution so no notification is lost.
+    """
+
+    _executor = SafeThreadPoolExecutor(max_workers=1, thread_name_prefix="orlab-plugin-notification")
+
+    def __init__(self, language: str = "zh"):
+        self.language = language
+        self._settings: Optional[Settings] = None
+        self._path: Optional[str] = None
+
+    @property
+    def name(self) -> str:
+        return self.__class__.__name__
+
+    # -- Callback hooks -----------------------------------------------------
+
+    def on_run_initialized(self, run_dir: Path, path: str, settings: Settings, *args, **kwargs) -> None:
+        self._settings = settings
+        self._path = path
+
+    def on_run_finished(self, state: str, error: Optional[str] = None, **kwargs) -> None:
+        if self._settings is not None:
+            self._executor.run(self._send_notification, state, error)
+
+    # -- Template helpers ---------------------------------------------------
+
+    def _get_url(self) -> Optional[str]:
+        if self._settings is None:
+            return None
+        return build_run_url(self._settings, self._path)
+
+    def _build_content(self, state: str, error: Optional[str]) -> str:
+        tpl = _TEMPLATES.get(self.language, _TEMPLATES["zh"])
+        content: str = tpl["title"]
+        if error:
+            content += tpl["msg_error"].format(error=error)
+        else:
+            content += tpl["msg_success"]
+        url = self._get_url()
+        if url and self._settings:
+            content += tpl["link_text"].format(
+                project=self._settings.project.name or "",
+                workspace=self._settings.project.workspace or "",
+                exp_name=self._settings.experiment.name or "",
+                description=self._settings.experiment.description or "",
+                link=url,
+            )
+        return content
+
+    # -- Extension point ----------------------------------------------------
+
+    @abstractmethod
+    def _send_notification(self, state: str, error: Optional[str]) -> None:
+        """Send the notification.  Runs inside the shared thread pool."""
+        ...

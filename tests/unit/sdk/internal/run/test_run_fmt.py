@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-import swanlab.sdk.internal.run.fmt as fmt
+import open_run_lab.sdk.internal.run.fmt as fmt
 
 # ─────────────────────────── flatten_dict ────────────────────────────
 
@@ -45,7 +45,7 @@ class TestFlattenDict:
     def test_duplicate_key_latter_wins(self, monkeypatch):
         """出现同名展开键时，后者覆盖前者，并触发一次警告"""
         mock_warning = []
-        monkeypatch.setattr("swanlab.sdk.internal.run.fmt.console.warning", lambda *args: mock_warning.append(args))
+        monkeypatch.setattr("open_run_lab.sdk.internal.run.fmt.console.warning", lambda *args: mock_warning.append(args))
 
         data = {"a": {"b": 1}, "a/b": 99}
         result = fmt.flatten_dict(data)
@@ -81,7 +81,7 @@ class TestValidateKey:
 
     def test_strip_leading_trailing(self, monkeypatch):
         """头尾的空白、. 和 / 被剥离"""
-        monkeypatch.setattr("swanlab.sdk.internal.run.fmt.console.warning", lambda *args: None)
+        monkeypatch.setattr("open_run_lab.sdk.internal.run.fmt.console.warning", lambda *args: None)
         assert fmt.validate_key("  loss  ") == "loss"
         assert fmt.validate_key("./key/") == "key"
         assert fmt.validate_key("...key...") == "key"
@@ -112,7 +112,7 @@ class TestValidateKey:
 
     def test_custom_max_len(self, monkeypatch):
         """自定义 max_len 生效"""
-        monkeypatch.setattr("swanlab.sdk.internal.run.fmt.console.warning", lambda *args: None)
+        monkeypatch.setattr("open_run_lab.sdk.internal.run.fmt.console.warning", lambda *args: None)
         assert fmt.validate_key("abcdef", max_len=3) == "abc"
 
     @pytest.mark.parametrize("key, expected", [(42, "42"), (3.14, "3.14")])
@@ -130,7 +130,7 @@ class TestValidateKey:
     def test_warning_fires_once_per_key(self, monkeypatch):
         """相同 key 被头尾剥离时，只触发一次警告"""
         mock_warning = []
-        monkeypatch.setattr("swanlab.sdk.internal.run.fmt.console.warning", lambda *args: mock_warning.append(args))
+        monkeypatch.setattr("open_run_lab.sdk.internal.run.fmt.console.warning", lambda *args: mock_warning.append(args))
 
         fmt.validate_key("  bad_key  ")
         fmt.validate_key("  bad_key  ")
@@ -141,7 +141,7 @@ class TestValidateKey:
     def test_warning_fires_for_different_keys(self, monkeypatch):
         """不同被剥离的 key 各自独立触发一次警告"""
         mock_warning = []
-        monkeypatch.setattr("swanlab.sdk.internal.run.fmt.console.warning", lambda *args: mock_warning.append(args))
+        monkeypatch.setattr("open_run_lab.sdk.internal.run.fmt.console.warning", lambda *args: mock_warning.append(args))
 
         fmt.validate_key("  bad_key1  ")
         fmt.validate_key("  bad_key2  ")
@@ -195,14 +195,14 @@ class TestResolveSavePaths:
     @pytest.mark.parametrize("glob_str", [None, 1, object()])
     def test_invalid_glob_type_returns_none(self, glob_str, monkeypatch):
         errors = []
-        monkeypatch.setattr("swanlab.sdk.internal.run.fmt.console.error", lambda *args: errors.append(args))
+        monkeypatch.setattr("open_run_lab.sdk.internal.run.fmt.console.error", lambda *args: errors.append(args))
 
         assert fmt.resolve_save_paths(glob_str) is None  # type: ignore[arg-type]
         assert errors
 
     def test_invalid_glob_bytes_returns_none(self, monkeypatch):
         errors = []
-        monkeypatch.setattr("swanlab.sdk.internal.run.fmt.console.error", lambda *args: errors.append(args))
+        monkeypatch.setattr("open_run_lab.sdk.internal.run.fmt.console.error", lambda *args: errors.append(args))
 
         assert fmt.resolve_save_paths(b"\xff") is None
         assert errors
@@ -210,14 +210,14 @@ class TestResolveSavePaths:
     @pytest.mark.parametrize("base_path", [1, object(), []])
     def test_invalid_base_path_type_returns_none(self, base_path, monkeypatch):
         errors = []
-        monkeypatch.setattr("swanlab.sdk.internal.run.fmt.console.error", lambda *args: errors.append(args))
+        monkeypatch.setattr("open_run_lab.sdk.internal.run.fmt.console.error", lambda *args: errors.append(args))
 
         assert fmt.resolve_save_paths("model.pt", base_path=base_path) is None  # type: ignore[arg-type]
         assert errors
 
     def test_glob_outside_base_path_returns_none(self, tmp_path, monkeypatch):
         errors = []
-        monkeypatch.setattr("swanlab.sdk.internal.run.fmt.console.error", lambda *args: errors.append(args))
+        monkeypatch.setattr("open_run_lab.sdk.internal.run.fmt.console.error", lambda *args: errors.append(args))
         base_path = tmp_path / "base"
         base_path.mkdir()
 
@@ -227,7 +227,7 @@ class TestResolveSavePaths:
     @pytest.mark.parametrize("glob_str", ["s3://bucket/model.pt", "gs://bucket/model.pt"])
     def test_cloud_storage_url_returns_none(self, glob_str, monkeypatch):
         warnings = []
-        monkeypatch.setattr("swanlab.sdk.internal.run.fmt.console.warning", lambda *args: warnings.append(args))
+        monkeypatch.setattr("open_run_lab.sdk.internal.run.fmt.console.warning", lambda *args: warnings.append(args))
 
         assert fmt.resolve_save_paths(glob_str) is None
         assert warnings
@@ -242,9 +242,9 @@ class TestResolveSavePaths:
             return original_resolve(path)
 
         monkeypatch.setattr(
-            "swanlab.sdk.internal.run.fmt.console.error", lambda *args, **kwargs: errors.append(args or kwargs)
+            "open_run_lab.sdk.internal.run.fmt.console.error", lambda *args, **kwargs: errors.append(args or kwargs)
         )
-        monkeypatch.setattr("swanlab.sdk.internal.run.fmt.Path.resolve", raise_on_model_path)
+        monkeypatch.setattr("open_run_lab.sdk.internal.run.fmt.Path.resolve", raise_on_model_path)
 
         assert fmt.resolve_save_paths("model.pt") is None
         assert errors

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/swanhubx/swanlab/core/internal/pkg/console"
+	"github.com/open-run-lab/open-run-lab/core/internal/pkg/console"
 )
 
 // ErrParentExited 表示当前父进程已经不是调用方传入的预期父进程。

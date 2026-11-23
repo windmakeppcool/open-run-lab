@@ -2,7 +2,7 @@
 @author: cunyue
 @file: test_pkg_fork.py
 @time: 2026/4/19
-@description: 测试 swanlab.sdk.internal.pkg.fork 模块
+@description: 测试 open_run_lab.sdk.internal.pkg.fork 模块
 """
 
 import multiprocessing
@@ -11,7 +11,7 @@ import sys
 
 import pytest
 
-from swanlab.sdk.internal.pkg import fork
+from open_run_lab.sdk.internal.pkg import fork
 
 # 参考: https://docs.python.org/3.9/library/multiprocessing.html#contexts-and-start-methods
 # macOS 多进程不支持 fork
@@ -124,7 +124,7 @@ class TestUnregister:
         fork.register(cb)
         fork.unregister(cb)
         # 直接检查 _callbacks 列表
-        from swanlab.sdk.internal.pkg.fork import _callbacks
+        from open_run_lab.sdk.internal.pkg.fork import _callbacks
 
         assert cb not in _callbacks
 

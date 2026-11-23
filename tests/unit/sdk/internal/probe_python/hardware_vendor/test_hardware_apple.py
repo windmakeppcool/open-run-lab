@@ -11,8 +11,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from swanlab.sdk.internal.probe_python.hardware_vendor.apple import Apple
-from swanlab.sdk.internal.probe_python.typings import AppleSiliconSnapshot, PlatformSlug, SystemShim
+from open_run_lab.sdk.internal.probe_python.hardware_vendor.apple import Apple
+from open_run_lab.sdk.internal.probe_python.typings import AppleSiliconSnapshot, PlatformSlug, SystemShim
 
 
 class TestAppleGet:

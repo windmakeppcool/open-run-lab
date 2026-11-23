@@ -16,16 +16,16 @@ import numpy as np
 import pyecharts.charts
 import pytest
 
-import swanlab.sdk.internal.run.transforms  # noqa: F401  # type: ignore — 触发所有子类注册
-from swanlab.sdk.internal.context import TransformMedia
-from swanlab.sdk.internal.run.transforms.audio import Audio
-from swanlab.sdk.internal.run.transforms.echarts import ECharts
-from swanlab.sdk.internal.run.transforms.html import Html
-from swanlab.sdk.internal.run.transforms.image import Image
-from swanlab.sdk.internal.run.transforms.molecule import Molecule
-from swanlab.sdk.internal.run.transforms.object3d import Object3D
-from swanlab.sdk.internal.run.transforms.text import Text
-from swanlab.sdk.internal.run.transforms.video import Video
+import open_run_lab.sdk.internal.run.transforms  # noqa: F401  # type: ignore — 触发所有子类注册
+from open_run_lab.sdk.internal.context import TransformMedia
+from open_run_lab.sdk.internal.run.transforms.audio import Audio
+from open_run_lab.sdk.internal.run.transforms.echarts import ECharts
+from open_run_lab.sdk.internal.run.transforms.html import Html
+from open_run_lab.sdk.internal.run.transforms.image import Image
+from open_run_lab.sdk.internal.run.transforms.molecule import Molecule
+from open_run_lab.sdk.internal.run.transforms.object3d import Object3D
+from open_run_lab.sdk.internal.run.transforms.text import Text
+from open_run_lab.sdk.internal.run.transforms.video import Video
 
 # 最小合法 GIF89a（1×1 像素）
 _GIF_1X1 = (

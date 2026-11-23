@@ -1,4 +1,4 @@
-# SwanLab 领域审核契约
+# OpenRunLab 领域审核契约
 
 先根据 PR 文件列表判断适用范围，只读取与变更相关的章节。所有 Python 应用代码还需检查“横切质量与代码规范”；涉及凭据、网络、日志、文件路径或用户数据时，再检查“安全与隐私”。
 
@@ -6,17 +6,17 @@
 
 ## 公共 API 与类型兼容
 
-适用路径：`swanlab/__init__.py`、`swanlab/__init__.pyi`、`swanlab/sdk/__init__.py`、`swanlab/sdk/typings/**`、`swanlab/sdk/protocol/**`、`swanlab/exceptions.py`、`swanlab/deprecated/**` 及公开类和函数。
+适用路径：`open_run_lab/__init__.py`、`open_run_lab/__init__.pyi`、`open_run_lab/sdk/__init__.py`、`open_run_lab/sdk/typings/**`、`open_run_lab/sdk/protocol/**`、`open_run_lab/exceptions.py`、`open_run_lab/deprecated/**` 及公开类和函数。
 
-- 顶层运行时导出、`__all__` 和 `swanlab/__init__.pyi` 保持同步。
+- 顶层运行时导出、`__all__` 和 `open_run_lab/__init__.pyi` 保持同步。
 - 新增或修改公开参数时检查默认值、返回值、异常、文档和类型签名是否一致。
 - 已发布 API 的删除、重命名或语义变化需要兼容或明确的弃用路径，不能静默破坏用户代码。
 - 保持 Python 3.9-3.14 可用，不引入只在单一 Python 版本成立的行为。
-- 修改 `swanlab.run`、`get_run()` 等动态属性时覆盖初始化前、运行中和结束后的行为。
+- 修改 `open_run_lab.run`、`get_run()` 等动态属性时覆盖初始化前、运行中和结束后的行为。
 
 ## Run 生命周期与运行时组件
 
-适用路径：`swanlab/sdk/cmd/**`、`swanlab/sdk/internal/run/**`、`swanlab/sdk/internal/context/**`、`swanlab/sdk/internal/bus/**`、`swanlab/sdk/internal/impl.py`。
+适用路径：`open_run_lab/sdk/cmd/**`、`open_run_lab/sdk/internal/run/**`、`open_run_lab/sdk/internal/context/**`、`open_run_lab/sdk/internal/bus/**`、`open_run_lab/sdk/internal/impl.py`。
 
 - `init`、`log`、`finish` 和 reinit 的状态转换清晰，失败路径不会遗留半初始化的全局状态。
 - `offline`、`disabled` 两种模式保持各自边界；disabled 模式不应产生不必要的文件副作用。
@@ -27,7 +27,7 @@
 
 ## Record、Core 与本地存储
 
-适用路径：`swanlab/sdk/internal/core_python/**`、`store/**`、Record builder 和 consumer。
+适用路径：`open_run_lab/sdk/internal/core_python/**`、`store/**`、Record builder 和 consumer。
 
 - Record 保持可顺序写入、读取和重放；序号、批次和完成状态不能倒退或重复计数。
 - scalar、media、column、config、log、save 和生命周期记录的转换链路保持完整。
@@ -38,7 +38,7 @@
 
 ## 配置与 Settings
 
-适用路径：`swanlab/sdk/internal/settings/**`。
+适用路径：`open_run_lab/sdk/internal/settings/**`。
 
 - 保持 Settings 声明的配置源优先级；有意调整时同步兼容测试和用户文档。
 - Settings 负责类型、格式和默认值；目录创建等业务副作用留在初始化阶段。
@@ -48,18 +48,18 @@
 
 ## CLI
 
-适用路径：`swanlab/cli/**`、`swanlab/sdk/cmd/**`。
+适用路径：`open_run_lab/cli/**`、`open_run_lab/sdk/cmd/**`。
 
 - 只支持 offline/disabled 两种模式；不提供 login、logout、verify、sync、ping、api、watch 等命令。
 - CLI 的参数名、别名、默认值、帮助文本、输出和退出码保持兼容。
-- 非交互环境不能意外等待输入；命令输出中的实验位置指向本地 `swanlog` 目录。
+- 非交互环境不能意外等待输入；命令输出中的实验位置指向本地 `orlab-log` 目录。
 
 ## 媒体、转换与文件
 
-适用路径：`swanlab/sdk/internal/run/transforms/**`、媒体类型、`save`、文件 watcher 和上传逻辑。
+适用路径：`open_run_lab/sdk/internal/run/transforms/**`、媒体类型、`save`、文件 watcher 和上传逻辑。
 
 - Image、Audio、Video、Text、Html、ECharts、Object3D、Molecule 的输入类型、输出文件和 Record 元数据一致。
-- 可选依赖应按需加载；未安装媒体或框架依赖时不能影响基础 `import swanlab`。
+- 可选依赖应按需加载；未安装媒体或框架依赖时不能影响基础 `import open_run_lab`。
 - 文件名、扩展名、MIME、大小、hash、caption 和 step 在转换与本地写入链路中不丢失。
 - 文件句柄、临时文件、watcher、线程和大对象有释放路径。
 - 大文件和批量媒体避免一次性读入内存，并遵守本地存储的大小、分片和批次限制。
@@ -67,9 +67,9 @@
 
 ## 硬件与环境探测
 
-适用路径：`swanlab/sdk/internal/probe_python/**`（含 `hardware_vendor/**`、`monitor/**`、`environment/**`、`protocol/**`）、`swanlab/vendor/**`。
+适用路径：`open_run_lab/sdk/internal/probe_python/**`（含 `hardware_vendor/**`、`monitor/**`、`environment/**`、`protocol/**`）、`open_run_lab/vendor/**`。
 
-- 第三方厂商 SDK、驱动或命令行工具缺失时降级为“不可用”，不能让 `import swanlab` 或 `init` 失败。
+- 第三方厂商 SDK、驱动或命令行工具缺失时降级为“不可用”，不能让 `import open_run_lab` 或 `init` 失败。
 - 厂商探测按已有约定判定可用性；探测失败、超时和权限不足都走统一的失败路径，不打断 Run。
 - 监控线程有明确的启动、采样间隔和停止路径；Run finish 后不残留线程或子进程。
 - 采集结果的字段名、单位和数据类型保持稳定，避免破坏本地控制台已有的硬件面板。
@@ -80,7 +80,7 @@
 
 ## 共享工具与内部 pkg
 
-适用路径：`swanlab/sdk/internal/pkg/**`（`safe/`、`fs/`、`console/`、`fork/`、`timer/`、`executor/`、`scope/`、`adapter/`、`constraints/`、`helper/` 等）、`swanlab/utils/**`。
+适用路径：`open_run_lab/sdk/internal/pkg/**`（`safe/`、`fs/`、`console/`、`fork/`、`timer/`、`executor/`、`scope/`、`adapter/`、`constraints/`、`helper/` 等）、`open_run_lab/utils/**`。
 
 - 这些是被多层复用的公共工具，改动前确认全部调用点，评估影响范围而不只看本地语义。
 - `safe` 系列的错误吞噬边界保持明确；不要用它掩盖应当上抛的错误，也不要留空 catch。
@@ -91,7 +91,7 @@
 
 ## 集成、转换器与插件
 
-适用路径：`swanlab/integration/**`、`swanlab/converter/**`、`swanlab/plugin/**`。
+适用路径：`open_run_lab/integration/**`、`open_run_lab/converter/**`、`open_run_lab/plugin/**`。
 
 - 第三方框架未安装时保持基础包可导入，并提供清晰错误而非导入期崩溃。
 - 框架 callback 只在正确进程或 rank 记录，避免重复初始化、重复 step 和重复 finish。
@@ -102,7 +102,7 @@
 
 ## Protobuf 与生成代码
 
-适用路径：`protos/**`、`swanlab/proto/**`、`core/proto/**`、`scripts/generate_protos.py`。
+适用路径：`protos/**`、`open_run_lab/proto/**`、`core/proto/**`、`scripts/generate_protos.py`。
 
 - `protos/**` 是协议源；变更后同步提交 Python 和 Go 生成代码。
 - 已发布 `v1` 消息保持向后兼容，不复用或改变已有字段号和枚举值语义。
@@ -112,7 +112,7 @@
 
 ## 构建、依赖与发布
 
-适用路径：`pyproject.toml`、`uv.lock`、`Makefile`、`swanlab/package.json`、`.github/workflows/**`。
+适用路径：`pyproject.toml`、`uv.lock`、`Makefile`、`open_run_lab/package.json`、`.github/workflows/**`。
 
 - 依赖变更同步 `pyproject.toml` 与 `uv.lock`，区分核心依赖、dev dependency 和 optional extra。
 - 基础安装不能强制引入只服务于单个媒体类型或第三方框架的重依赖。

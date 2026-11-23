@@ -2,16 +2,16 @@
 @author: cunyue
 @file: test_finish_e2e.py
 @time: 2026/3/14
-@description: 测试 swanlab.finish() 的端到端行为（配合真实 init() 启动 Run）
+@description: 测试 open_run_lab.finish() 的端到端行为（配合真实 init() 启动 Run）
 全部使用 mode='disabled'，避免文件系统和网络依赖。
 """
 
 import pytest
 
-import swanlab
-from swanlab.sdk.cmd.init import init
-from swanlab.sdk.cmd.run import finish
-from swanlab.sdk.internal.run import clear_run, has_run
+import open_run_lab
+from open_run_lab.sdk.cmd.init import init
+from open_run_lab.sdk.cmd.run import finish
+from open_run_lab.sdk.internal.run import clear_run, has_run
 
 
 class TestFinishE2E:
@@ -21,7 +21,7 @@ class TestFinishE2E:
         assert run is not None
         assert has_run()
 
-        swanlab.finish()
+        open_run_lab.finish()
 
         assert not has_run()
 
@@ -40,36 +40,36 @@ class TestFinishE2E:
         assert not has_run()
 
         warnings = []
-        monkeypatch.setattr("swanlab.sdk.cmd.guard.console.warning", lambda msg, *a, **kw: warnings.append(msg))
+        monkeypatch.setattr("open_run_lab.sdk.cmd.guard.console.warning", lambda msg, *a, **kw: warnings.append(msg))
 
         assert finish() is None
 
         assert not has_run()
-        assert warnings == ["SwanLab Run has already finished or has not started."]
+        assert warnings == ["OpenRunLab Run has already finished or has not started."]
 
     def test_double_finish_warns(self, monkeypatch):
         """连续两次顶层 finish()：第二次只告警，不抛出异常，同时保持全局 Run 已清理"""
         warnings = []
         monkeypatch.setattr(
-            "swanlab.sdk.internal.run.console.warning", lambda msg, *args, **kwargs: warnings.append(msg)
+            "open_run_lab.sdk.internal.run.console.warning", lambda msg, *args, **kwargs: warnings.append(msg)
         )
 
         init(mode="disabled")
 
         finish()
         assert not has_run()
-        assert swanlab.run is None
+        assert open_run_lab.run is None
 
         finish()
         assert not has_run()
-        assert swanlab.run is None
-        assert warnings == ["SwanLab Run has already finished or has not started."]
+        assert open_run_lab.run is None
+        assert warnings == ["OpenRunLab Run has already finished or has not started."]
 
     def test_run_finish_warns_when_already_finished(self, monkeypatch):
         """直接持有 Run 对象时，重复 finish() 也只告警，不抛出异常"""
         warnings = []
         monkeypatch.setattr(
-            "swanlab.sdk.internal.run.console.warning", lambda msg, *args, **kwargs: warnings.append(msg)
+            "open_run_lab.sdk.internal.run.console.warning", lambda msg, *args, **kwargs: warnings.append(msg)
         )
 
         run = init(mode="disabled")
@@ -78,12 +78,12 @@ class TestFinishE2E:
         assert not has_run()
 
         run.finish()
-        assert warnings == ["SwanLab Run has already finished or has not started."]
+        assert warnings == ["OpenRunLab Run has already finished or has not started."]
 
     def test_other_cmd_raises_after_finish(self):
         """finish 后调用 log（非 finish 命令）应抛出 RuntimeError，证明 allow_finished 仅对 finish 生效"""
         init(mode="disabled")
         finish()
 
-        with pytest.raises(RuntimeError, match="`swanlab.log` requires an active Run"):
-            swanlab.log({"x": 1})
+        with pytest.raises(RuntimeError, match="`open_run_lab.log` requires an active Run"):
+            open_run_lab.log({"x": 1})

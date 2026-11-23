@@ -12,11 +12,11 @@ import pytest
 import yaml
 from google.protobuf.timestamp_pb2 import Timestamp
 
-from swanlab.proto.swanlab.metric.data.v1.data_pb2 import MediaItem, MediaRecord
-from swanlab.proto.swanlab.save.v1.save_pb2 import SaveType
-from swanlab.sdk.internal.bus.events import ConfigEvent
-from swanlab.sdk.internal.run.components.consumer.builder import _NON_SCALAR_TYPES, RecordBuilder, is_scalar_value
-from swanlab.sdk.internal.run.transforms import Text
+from open_run_lab.proto.orlab.metric.data.v1.data_pb2 import MediaItem, MediaRecord
+from open_run_lab.proto.orlab.save.v1.save_pb2 import SaveType
+from open_run_lab.sdk.internal.bus.events import ConfigEvent
+from open_run_lab.sdk.internal.run.components.consumer.builder import _NON_SCALAR_TYPES, RecordBuilder, is_scalar_value
+from open_run_lab.sdk.internal.run.transforms import Text
 
 
 def _make_media_record(key: str = "test", step: int = 0, items=None) -> MediaRecord:
@@ -190,7 +190,7 @@ class TestIsScalarValue:
         assert is_scalar_value(Line()) is False
 
     def test_histogram_returns_false(self):
-        from swanlab import Histogram
+        from open_run_lab import Histogram
 
         assert is_scalar_value(Histogram([1, 2, 3])) is False
 
@@ -204,9 +204,9 @@ class TestBuildHistogram:
         return object.__new__(RecordBuilder)
 
     def test_histogram_dispatches_to_histogram_record(self, builder):
-        from swanlab import Histogram
-        from swanlab.proto.swanlab.metric.column.v1.column_pb2 import ColumnType
-        from swanlab.proto.swanlab.metric.data.v1.data_pb2 import HistogramRecord
+        from open_run_lab import Histogram
+        from open_run_lab.proto.orlab.metric.column.v1.column_pb2 import ColumnType
+        from open_run_lab.proto.orlab.metric.data.v1.data_pb2 import HistogramRecord
 
         ts = Timestamp()
         ts.GetCurrentTime()
@@ -225,9 +225,9 @@ class TestBuildHistogram:
         """类型校验失败的 Histogram 在构建 record 时直接跳过"""
         from unittest.mock import patch
 
-        from swanlab import Histogram
+        from open_run_lab import Histogram
 
-        with patch("swanlab.sdk.internal.run.transforms.histogram.console.trace"):
+        with patch("open_run_lab.sdk.internal.run.transforms.histogram.console.trace"):
             h = Histogram(np_histogram=123)  # type: ignore[arg-type]
         record, cls = builder.build_scalar_or_media(h, "train/w", Timestamp(), step=7)
 

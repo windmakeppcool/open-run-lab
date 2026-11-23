@@ -65,9 +65,9 @@ jobs:
           REPO="${GITHUB_REPOSITORY}"
 
           RELEASE_URL="https://github.com/${REPO}/releases/tag/${TAG}"
-          PYPI_URL="https://pypi.org/project/swanlab/${VERSION}/"
+          PYPI_URL="https://pypi.org/project/open-run-lab/${VERSION}/"
 
-          echo "Notifying Feishu: SwanLab SDK ${TAG}"
+          echo "Notifying Feishu: OpenRunLab SDK ${TAG}"
 
           PAYLOAD=$(VERSION="$VERSION" TAG="$TAG" RELEASE_URL="$RELEASE_URL" PYPI_URL="$PYPI_URL" python3 - <<'PY'
           import json
@@ -88,7 +88,7 @@ jobs:
                   "header": {
                       "title": {
                           "tag": "plain_text",
-                          "content": "📢 SwanLab SDK 版本更新通知",
+                          "content": "📢 OpenRunLab SDK 版本更新通知",
                       },
                       "template": "blue",
                   },
@@ -99,7 +99,7 @@ jobs:
                               "tag": "markdown",
                               "content": (
                                   f"**版本:** {tag}\n"
-                                  f"**包名:** swanlab\n"
+                                  f"**包名:** open-run-lab\n"
                                   f"**发布状态:** 已发布到 PyPI / GitHub Release"
                               ),
                               "text_align": "left",

@@ -5,8 +5,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from swanlab.sdk.internal.pkg import console
-from swanlab.sdk.internal.pkg.timer import Timer
+from open_run_lab.sdk.internal.pkg import console
+from open_run_lab.sdk.internal.pkg.timer import Timer
 
 
 @pytest.fixture

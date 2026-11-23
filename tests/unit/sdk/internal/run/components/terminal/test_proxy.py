@@ -3,9 +3,9 @@ from unittest.mock import Mock
 
 import pytest
 
-from swanlab.sdk.internal.bus import EmitterProtocol
-from swanlab.sdk.internal.run.components.terminal import TerminalProxy
-from swanlab.sdk.internal.run.components.terminal.emulator import Char, TerminalEmulator
+from open_run_lab.sdk.internal.bus import EmitterProtocol
+from open_run_lab.sdk.internal.run.components.terminal import TerminalProxy
+from open_run_lab.sdk.internal.run.components.terminal.emulator import Char, TerminalEmulator
 
 
 @pytest.fixture

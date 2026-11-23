@@ -2,12 +2,12 @@
 @author: cunyue
 @file: __init__.py
 @time: 2026/3/10 20:47
-@description: SwanLab SDK 辅助函数
+@description: OpenRunLab SDK 辅助函数
 """
 
 import pytest
 
-from swanlab.sdk.internal.pkg.helper import fmt_run_path, strip_none
+from open_run_lab.sdk.internal.pkg.helper import fmt_run_path, strip_none
 
 
 class TestStripNone:

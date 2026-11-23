@@ -2,7 +2,7 @@
 @author: cunyue
 @file: test_fs_dir.py
 @time: 2026/3/11 14:30
-@description: SwanLab SDK 文件系统辅助函数测试
+@description: OpenRunLab SDK 文件系统辅助函数测试
 """
 
 import errno
@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from swanlab.sdk.internal.pkg.fs import dir
+from open_run_lab.sdk.internal.pkg.fs import dir
 
 sys.modules[".."] = type(sys)("mock_parent")
 sys.modules[".."].console = type(sys)("mock_console")
@@ -52,12 +52,12 @@ def test_safe_mkdir_nas_timeout(monkeypatch, tmp_path: Path):
     target = tmp_path / "timeout_dir"
 
     time_calls = [0, 10, 20, 30]
-    monkeypatch.setattr("swanlab.sdk.internal.pkg.fs.dir.time.time", lambda: time_calls.pop(0))
+    monkeypatch.setattr("open_run_lab.sdk.internal.pkg.fs.dir.time.time", lambda: time_calls.pop(0))
 
     def mock_mkstemp(*args, **kwargs):
         raise OSError("Simulated NAS IO Error")
 
-    monkeypatch.setattr("swanlab.sdk.internal.pkg.fs.dir.tempfile.mkstemp", mock_mkstemp)
+    monkeypatch.setattr("open_run_lab.sdk.internal.pkg.fs.dir.tempfile.mkstemp", mock_mkstemp)
 
     with pytest.raises(TimeoutError, match="is not writable within") as exc_info:
         dir.safe_mkdir(target, timeout=5.0)
@@ -73,7 +73,7 @@ def test_safe_mkdir_permission_denied_raises_permission_error(monkeypatch, tmp_p
     def mock_mkstemp(*args, **kwargs):
         raise PermissionError(errno.EACCES, "Permission denied")
 
-    monkeypatch.setattr("swanlab.sdk.internal.pkg.fs.dir.tempfile.mkstemp", mock_mkstemp)
+    monkeypatch.setattr("open_run_lab.sdk.internal.pkg.fs.dir.tempfile.mkstemp", mock_mkstemp)
 
     with pytest.raises(PermissionError, match="Directory .* is not writable"):
         dir.safe_mkdir(target, timeout=5.0)
@@ -91,7 +91,7 @@ def test_safe_mkdir_does_not_depend_on_temporary_file(monkeypatch, tmp_path: Pat
     def mock_temporary_file(*args, **kwargs):
         raise OSError(errno.EIO, "Input/output error")
 
-    monkeypatch.setattr("swanlab.sdk.internal.pkg.fs.dir.tempfile.TemporaryFile", mock_temporary_file)
+    monkeypatch.setattr("open_run_lab.sdk.internal.pkg.fs.dir.tempfile.TemporaryFile", mock_temporary_file)
 
     result = dir.safe_mkdir(target, timeout=1.0)
 
@@ -125,8 +125,8 @@ def test_probe_unlink_failure_does_not_fail_writability_probe(monkeypatch, tmp_p
     def mock_trace(message, *args, **kwargs):
         trace_messages.append((message, kwargs))
 
-    monkeypatch.setattr("swanlab.sdk.internal.pkg.fs.dir.os.unlink", mock_unlink)
-    monkeypatch.setattr("swanlab.sdk.internal.pkg.safe.console.trace", mock_trace)
+    monkeypatch.setattr("open_run_lab.sdk.internal.pkg.fs.dir.os.unlink", mock_unlink)
+    monkeypatch.setattr("open_run_lab.sdk.internal.pkg.safe.console.trace", mock_trace)
 
     assert dir.safe_mkdir(target, timeout=5.0) == target
     assert len(unlink_calls) == 1
@@ -150,8 +150,8 @@ def test_probe_cleanup_failure_does_not_mask_original_error(monkeypatch, tmp_pat
             raise OSError(errno.EPERM, "simulated unlink failure")
         return real_unlink(path, *args, **kwargs)
 
-    monkeypatch.setattr("swanlab.sdk.internal.pkg.fs.dir.os.write", mock_write)
-    monkeypatch.setattr("swanlab.sdk.internal.pkg.fs.dir.os.unlink", mock_unlink)
+    monkeypatch.setattr("open_run_lab.sdk.internal.pkg.fs.dir.os.write", mock_write)
+    monkeypatch.setattr("open_run_lab.sdk.internal.pkg.fs.dir.os.unlink", mock_unlink)
 
     with pytest.raises(OSError, match="simulated write failure") as exc_info:
         dir._probe_writable(tmp_path)
@@ -163,27 +163,27 @@ def test_probe_cleanup_failure_does_not_mask_original_error(monkeypatch, tmp_pat
 
 def test_timeout_env_invalid_string(monkeypatch):
     """测试环境变量为非法字符串时，是否能安全回退到默认值 5.0"""
-    monkeypatch.setenv("SWANLAB_FS_TIMEOUT", "invalid_abc123")
+    monkeypatch.setenv("ORLAB_FS_TIMEOUT", "invalid_abc123")
 
     mock_warnings = []
-    monkeypatch.setattr("swanlab.sdk.internal.pkg.fs.dir.console.warning", lambda msg: mock_warnings.append(msg))
+    monkeypatch.setattr("open_run_lab.sdk.internal.pkg.fs.dir.console.warning", lambda msg: mock_warnings.append(msg))
 
     importlib.reload(dir)
 
     assert dir.TIMEOUT == 5.0
     assert len(mock_warnings) == 1
-    assert "Invalid SWANLAB_FS_TIMEOUT" in mock_warnings[0]
+    assert "Invalid ORLAB_FS_TIMEOUT" in mock_warnings[0]
 
-    monkeypatch.delenv("SWANLAB_FS_TIMEOUT", raising=False)
+    monkeypatch.delenv("ORLAB_FS_TIMEOUT", raising=False)
     importlib.reload(dir)
 
 
 def test_timeout_env_negative_number(monkeypatch):
     """测试环境变量为负数或0时，是否能安全回退到默认值 5.0"""
-    monkeypatch.setenv("SWANLAB_FS_TIMEOUT", "-10.5")
+    monkeypatch.setenv("ORLAB_FS_TIMEOUT", "-10.5")
 
     mock_warnings = []
-    monkeypatch.setattr("swanlab.sdk.internal.pkg.fs.dir.console.warning", lambda msg: mock_warnings.append(msg))
+    monkeypatch.setattr("open_run_lab.sdk.internal.pkg.fs.dir.console.warning", lambda msg: mock_warnings.append(msg))
 
     importlib.reload(dir)
 
@@ -191,5 +191,5 @@ def test_timeout_env_negative_number(monkeypatch):
     assert len(mock_warnings) == 1
     assert "must be > 0" in mock_warnings[0]
 
-    monkeypatch.delenv("SWANLAB_FS_TIMEOUT", raising=False)
+    monkeypatch.delenv("ORLAB_FS_TIMEOUT", raising=False)
     importlib.reload(dir)

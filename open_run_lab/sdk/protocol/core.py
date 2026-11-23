@@ -1,0 +1,214 @@
+"""
+@author: cunyue
+@file: core.py
+@time: 2026/3/13
+@description: OpenRunLab Core 接口协议，负责对产出的Record做本地持久化处理
+
+本工程为纯本地运行版本，不包含任何云端交互逻辑。
+"""
+
+from abc import ABC, abstractmethod
+from enum import Enum
+from typing import List, Optional
+
+from open_run_lab.proto.orlab.grpc.core.v1.core_pb2 import (
+    CORE_ERROR_KIND_OTHER,
+    ConfirmRunFinishResponse,
+    CoreErrorKind,
+    DeliverRunFinishRequest,
+    DeliverRunFinishResponse,
+    DeliverRunStartRequest,
+    DeliverRunStartResponse,
+    GetOperationStatsResponse,
+)
+from open_run_lab.proto.orlab.metric.column.v1.column_pb2 import ColumnRecord
+from open_run_lab.proto.orlab.metric.data.v1.data_pb2 import HistogramRecord, MediaRecord, ScalarRecord
+from open_run_lab.proto.orlab.save.v1.save_pb2 import SaveRecord
+from open_run_lab.proto.orlab.terminal.v1.log_pb2 import LogRecord
+from open_run_lab.sdk.internal.pkg import safe
+from open_run_lab.sdk.typings.run import ModeType
+
+__all__ = ["CoreEnum", "CoreProtocol"]
+
+
+class CoreEnum(str, Enum):
+    CORE_PYTHON = "CorePython"
+    CORE = "Core"
+
+
+class CoreProtocol(ABC):
+    """
+    OpenRunLab Core 协议
+    协议层作为一个"垫片"，抹平前端与后端实现的差异，我们对CoreProtocol的错误处理理念基本与go一致，不raise Error，仅返回处理结果，上层根据返回结果做相应处理
+    """
+
+    def __init__(self, mode: ModeType):
+        self._mode = mode
+
+    # ---------------------------------- 实验开始 ----------------------------------
+
+    def deliver_run_start(self, start_request: DeliverRunStartRequest) -> DeliverRunStartResponse:
+        """
+        交付运行开始事件，同步事件，等待确认
+        约定应该在此处完成Core相关组件的初始化，在这里完成不同模式的初始化函数分发
+
+        启动失败由 Core 实现自行清理已创建的资源，不向调用方暴露清理接口。
+        """
+        errors: list[BaseException] = []
+        resp: Optional[DeliverRunStartResponse] = None
+        with safe.block(message="run start error", on_error=errors.append):
+            if self._mode == "offline":
+                resp = self._start_when_offline(start_request)
+            else:
+                resp = self._start_when_disabled(start_request)
+        if errors:
+            return self._start_failure(errors[0])
+        assert resp is not None
+        return resp
+
+    @staticmethod
+    def _start_failure(exc: BaseException, kind: CoreErrorKind = CORE_ERROR_KIND_OTHER) -> DeliverRunStartResponse:
+        return DeliverRunStartResponse(
+            success=False,
+            message=f"Failed to start run: {exc}",
+            error_kind=kind,
+        )
+
+    @staticmethod
+    def _start_when_disabled(start_request: DeliverRunStartRequest) -> DeliverRunStartResponse:
+        return DeliverRunStartResponse(
+            success=True, message="I'm a teapot.", run=start_request.start_record, new_experiment=True
+        )
+
+    @abstractmethod
+    def _start_when_offline(self, start_request: DeliverRunStartRequest) -> DeliverRunStartResponse: ...
+
+    # ---------------------------------- 指标定义 ----------------------------------
+
+    def upsert_columns(self, columns: List[ColumnRecord]) -> None:
+        """上报一组 ColumnRecord，定义指标列"""
+        with safe.block(message="upsert columns error"):
+            if self._mode == "offline":
+                return self._upsert_columns_when_offline(columns)
+            return self._upsert_columns_when_disabled(columns)
+
+    def _upsert_columns_when_disabled(self, columns: List[ColumnRecord]) -> None: ...
+
+    @abstractmethod
+    def _upsert_columns_when_offline(self, columns: List[ColumnRecord]) -> None: ...
+
+    # ---------------------------------- 标量指标值 ----------------------------------
+
+    def upsert_scalars(self, scalars: List[ScalarRecord]) -> None:
+        """上报一组 ScalarRecord，记录标量指标值"""
+        with safe.block(message="upsert data error"):
+            if self._mode == "offline":
+                return self._upsert_scalars_when_offline(scalars)
+            return self._upsert_scalars_when_disabled(scalars)
+
+    def _upsert_scalars_when_disabled(self, scalars: List[ScalarRecord]) -> None: ...
+
+    @abstractmethod
+    def _upsert_scalars_when_offline(self, scalars: List[ScalarRecord]) -> None: ...
+
+    # ---------------------------------- 媒体指标值 ----------------------------------
+
+    def upsert_media(self, media: List[MediaRecord]) -> None:
+        """上报一组 MediaRecord，记录媒体指标值"""
+        with safe.block(message="upsert data error"):
+            if self._mode == "offline":
+                return self._upsert_media_when_offline(media)
+            return self._upsert_media_when_disabled(media)
+
+    def _upsert_media_when_disabled(self, media: List[MediaRecord]) -> None: ...
+
+    @abstractmethod
+    def _upsert_media_when_offline(self, media: List[MediaRecord]) -> None: ...
+
+    # ---------------------------------- 直方图指标值 ----------------------------------
+
+    def upsert_histograms(self, histograms: List[HistogramRecord]) -> None:
+        """上报一组 HistogramRecord，记录直方图指标值"""
+        with safe.block(message="upsert histograms error"):
+            if self._mode == "offline":
+                return self._upsert_histograms_when_offline(histograms)
+            return self._upsert_histograms_when_disabled(histograms)
+
+    def _upsert_histograms_when_disabled(self, histograms: List[HistogramRecord]) -> None: ...
+
+    @abstractmethod
+    def _upsert_histograms_when_offline(self, histograms: List[HistogramRecord]) -> None: ...
+
+    # ---------------------------------- 终端输出 ----------------------------------
+
+    def upsert_logs(self, logs: List[LogRecord]) -> None:
+        """上报一组 LogRecord，记录用户终端输出"""
+        with safe.block(message="upsert logs error"):
+            if self._mode == "offline":
+                return self._upsert_logs_when_offline(logs)
+            return self._upsert_logs_when_disabled(logs)
+
+    def _upsert_logs_when_disabled(self, logs: List[LogRecord]) -> None: ...
+
+    @abstractmethod
+    def _upsert_logs_when_offline(self, logs: List[LogRecord]) -> None: ...
+
+    # ---------------------------------- 文件保存 ----------------------------------
+
+    def upsert_saves(self, saves: List[SaveRecord]) -> None:
+        """上报一组 SaveRecord，记录用户通过 open_run_lab.save() 保存的文件"""
+        with safe.block(message="upsert saves error"):
+            if self._mode == "offline":
+                return self._upsert_saves_when_offline(saves)
+            return self._upsert_saves_when_disabled(saves)
+
+    def _upsert_saves_when_disabled(self, saves: List[SaveRecord]) -> None: ...
+
+    @abstractmethod
+    def _upsert_saves_when_offline(self, saves: List[SaveRecord]) -> None: ...
+
+    # ---------------------------------- 通知运行结束 ----------------------------------
+
+    def deliver_run_finish(self, finish_request: DeliverRunFinishRequest) -> DeliverRunFinishResponse:
+        """
+        交付运行结束事件，同步事件，等待确认
+        约定应该在此处完成Core相关组件的清理，在这里完成不同模式的结束函数分发
+        """
+        with safe.block(message="run finish error"):
+            if self._mode == "offline":
+                return self._finish_when_offline(finish_request)
+            return self._finish_when_disabled()
+        return DeliverRunFinishResponse(success=False, message="Failed to finish run")
+
+    @staticmethod
+    def _finish_when_disabled() -> DeliverRunFinishResponse:
+        return DeliverRunFinishResponse(success=True, message="I'm a teapot.")
+
+    @abstractmethod
+    def _finish_when_offline(self, finish_request: DeliverRunFinishRequest) -> DeliverRunFinishResponse: ...
+
+    # ---------------------------------- 进度查询 ----------------------------------
+
+    def get_operation_stats(self) -> GetOperationStatsResponse:
+        """返回 Core 当前运行状态快照，纯本地模式下没有上传进度可展示"""
+        return GetOperationStatsResponse(success=True, message="I'm a teapot.")
+
+    def confirm_run_finish(self) -> ConfirmRunFinishResponse:
+        """确认运行结束：等待后台组件停止并完成本地收尾。"""
+        if self._mode == "disabled":
+            return ConfirmRunFinishResponse(success=True, message="I'm a teapot.")
+        with safe.block(message="confirm run finish error"):
+            return self._confirm_finish_when_enabled()
+        return ConfirmRunFinishResponse(success=False, message="Failed to confirm run finish with unknown error")
+
+    @abstractmethod
+    def _confirm_finish_when_enabled(self) -> ConfirmRunFinishResponse: ...
+
+    # ---------------------------------- 进程fork ----------------------------------
+
+    @abstractmethod
+    def fork(self) -> "CoreProtocol":
+        """
+        创建一个新的 CoreProtocol，此函数用于处理多进程fork的情况
+        """
+        ...

@@ -7,7 +7,7 @@
 
 import yaml
 
-from swanlab.sdk.internal.run.components.config.writer import dump_config, format_config, write_config
+from open_run_lab.sdk.internal.run.components.config.writer import dump_config, format_config, write_config
 
 
 class TestFormatConfig:

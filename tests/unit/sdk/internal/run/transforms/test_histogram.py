@@ -11,16 +11,16 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from swanlab import Histogram, Text
-from swanlab.proto.swanlab.metric.column.v1.column_pb2 import ColumnType
-from swanlab.proto.swanlab.metric.data.v1.data_pb2 import HistogramRecord
+from open_run_lab import Histogram, Text
+from open_run_lab.proto.orlab.metric.column.v1.column_pb2 import ColumnType
+from open_run_lab.proto.orlab.metric.data.v1.data_pb2 import HistogramRecord
 
 # ---------------------------------- 原始序列输入 ----------------------------------
 
 
 def _make_invalid(*args, **kwargs):
     """构造一个类型/形状非法的 Histogram，并断言它被标记为无效"""
-    with patch("swanlab.sdk.internal.run.transforms.histogram.console.trace") as trace:
+    with patch("open_run_lab.sdk.internal.run.transforms.histogram.console.trace") as trace:
         h = Histogram(*args, **kwargs)
     assert not h.is_valid
     assert h.values == [] and h.bins == []
@@ -86,7 +86,7 @@ class TestSequenceInput:
 
     def test_bins_and_num_bins_conflict(self):
         """同时传入时 bins 优先，不抛异常"""
-        with patch("swanlab.sdk.internal.run.transforms.histogram.console.warning") as warning:
+        with patch("open_run_lab.sdk.internal.run.transforms.histogram.console.warning") as warning:
             h = Histogram([1, 2, 3], bins=2, num_bins=4)
         assert len(h.values) == 2
         warning.assert_called_once()
@@ -99,7 +99,7 @@ class TestSequenceInput:
 
     def test_explicit_default_bins_still_wins(self):
         """显式传 bins=64 时，bins 优先于 num_bins"""
-        with patch("swanlab.sdk.internal.run.transforms.histogram.console.warning") as warning:
+        with patch("open_run_lab.sdk.internal.run.transforms.histogram.console.warning") as warning:
             h = Histogram([1, 2, 3], bins=64, num_bins=2)
         assert len(h.values) == 64
         warning.assert_called_once()
@@ -175,7 +175,7 @@ class TestSequenceNonFinite:
             Histogram(np.array([np.nan, np.inf]))
 
     def test_all_non_finite_with_explicit_edges(self):
-        with patch("swanlab.sdk.internal.run.transforms.histogram.console.warning") as warning:
+        with patch("open_run_lab.sdk.internal.run.transforms.histogram.console.warning") as warning:
             h = Histogram([np.nan, np.inf, -np.inf], bins=[0.0, 1.0, 2.0])
 
         assert h.values == [0, 0]
@@ -220,7 +220,7 @@ class TestTypeValidationFailOpen:
         ],
     )
     def test_invalid_type_marks_invalid(self, kwargs):
-        with patch("swanlab.sdk.internal.run.transforms.histogram.console.trace") as trace:
+        with patch("open_run_lab.sdk.internal.run.transforms.histogram.console.trace") as trace:
             h = Histogram(**kwargs)
         assert not h.is_valid
         assert h.values == []
@@ -238,7 +238,7 @@ class TestOptionalDependencyMissing:
     """可选依赖缺失不能被当作无效输入吞掉，安装提示必须抛给调用方"""
 
     def test_missing_numpy_propagates(self, monkeypatch):
-        from swanlab.sdk.internal.run.transforms import histogram as histogram_module
+        from open_run_lab.sdk.internal.run.transforms import histogram as histogram_module
 
         class _MissingNumpy:
             def __getattr__(self, name):

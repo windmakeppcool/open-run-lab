@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 
 import pytest
 
-from swanlab.utils.time import TIMESTAMP_S_MAX, TIMESTAMP_S_MIN, parse_cli_timestamp_ns, parse_resp_timestamp_s
+from open_run_lab.utils.time import TIMESTAMP_S_MAX, TIMESTAMP_S_MIN, parse_cli_timestamp_ns, parse_resp_timestamp_s
 
 
 class TestParseRespTimestampS:

@@ -10,7 +10,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from swanlab.sdk.cmd.init import (
+from open_run_lab.sdk.cmd.init import (
     compatible_kwargs,
     ensure_run_dir,
     load_config,
@@ -151,7 +151,7 @@ class TestEnsureRunDir:
         """run_dir 已被占用时，应等待后用新时间戳重试直到成功"""
         call_count = 0
         original_generate = __import__(
-            "swanlab.sdk.cmd.init", fromlist=["_generate_run_dir_name"]
+            "open_run_lab.sdk.cmd.init", fromlist=["_generate_run_dir_name"]
         )._generate_run_dir_name
         this_run_dir = ""
 
@@ -163,7 +163,7 @@ class TestEnsureRunDir:
             this_run_dir, truncated = original_generate(run_id, max_length, parallel, hostname_max_len)
             return this_run_dir, truncated
 
-        monkeypatch.setattr("swanlab.sdk.cmd.init._generate_run_dir_name", mock_generate)
+        monkeypatch.setattr("open_run_lab.sdk.cmd.init._generate_run_dir_name", mock_generate)
 
         # 预先创建冲突目录
         (tmp_path / "run-20260101_000000-conflict").mkdir()
@@ -196,7 +196,7 @@ class TestEnsureRunDir:
     def test_raises_when_max_retries_exceeded(self, tmp_path, monkeypatch):
         """超过最大重试次数仍无法创建唯一目录时，应抛出 RuntimeError"""
         monkeypatch.setattr(
-            "swanlab.sdk.cmd.init._generate_run_dir_name",
+            "open_run_lab.sdk.cmd.init._generate_run_dir_name",
             lambda _run_id, _max_length, _parallel="none", _hostname_max_len=64: (
                 "run-20260101_000000-conflict",
                 False,
@@ -220,7 +220,7 @@ class TestEnsureRunDir:
 
     def test_truncates_long_name(self, tmp_path, monkeypatch):
         """超过长度限制时，应截断并在目录名中体现 ... 省略"""
-        monkeypatch.setattr("swanlab.sdk.cmd.init.console.warning", MagicMock())
+        monkeypatch.setattr("open_run_lab.sdk.cmd.init.console.warning", MagicMock())
 
         run_dir = ensure_run_dir(tmp_path, "a" * 512, retry_interval=0.01, dir_max_length=80)
 
@@ -229,7 +229,7 @@ class TestEnsureRunDir:
 
     def test_truncation_same_prefix(self, tmp_path, monkeypatch):
         """不同 run_id 截断后前缀相同时，... 省略格式可能相同"""
-        monkeypatch.setattr("swanlab.sdk.cmd.init.console.warning", MagicMock())
+        monkeypatch.setattr("open_run_lab.sdk.cmd.init.console.warning", MagicMock())
 
         run_dir1 = ensure_run_dir(tmp_path, "a" * 511 + "1", retry_interval=0.01, dir_max_length=80)
         # 用不同的 log_dir 避免冲突
@@ -254,8 +254,8 @@ class TestEnsureRunDir:
                 return "run-20260101_000000-conflict", True
             return "run-20260101_000001-success", True
 
-        monkeypatch.setattr("swanlab.sdk.cmd.init.console.warning", warning)
-        monkeypatch.setattr("swanlab.sdk.cmd.init._generate_run_dir_name", mock_generate)
+        monkeypatch.setattr("open_run_lab.sdk.cmd.init.console.warning", warning)
+        monkeypatch.setattr("open_run_lab.sdk.cmd.init._generate_run_dir_name", mock_generate)
         (tmp_path / "run-20260101_000000-conflict").mkdir()
 
         run_dir = ensure_run_dir(tmp_path, "a" * 512, max_retries=2, retry_interval=0.01, dir_max_length=80)
@@ -267,9 +267,9 @@ class TestEnsureRunDir:
     def test_does_not_warn_when_truncated_name_never_created(self, tmp_path, monkeypatch):
         """全部重试失败时，不应对未使用的截断目录告警"""
         warning = MagicMock()
-        monkeypatch.setattr("swanlab.sdk.cmd.init.console.warning", warning)
+        monkeypatch.setattr("open_run_lab.sdk.cmd.init.console.warning", warning)
         monkeypatch.setattr(
-            "swanlab.sdk.cmd.init._generate_run_dir_name",
+            "open_run_lab.sdk.cmd.init._generate_run_dir_name",
             lambda _run_id, _max_length, _parallel="none", _hostname_max_len=64: (
                 "run-20260101_000000-conflict",
                 True,
@@ -302,8 +302,8 @@ class TestEnsureRunDirShared:
 
     def test_shared_name_contains_hostname_and_pid(self, tmp_path, monkeypatch):
         """shared 模式目录名应包含 hostname 和 pid"""
-        monkeypatch.setattr("swanlab.sdk.cmd.init.socket.gethostname", lambda: "myhost")
-        monkeypatch.setattr("swanlab.sdk.cmd.init.fork.current_pid", lambda: 99999)
+        monkeypatch.setattr("open_run_lab.sdk.cmd.init.socket.gethostname", lambda: "myhost")
+        monkeypatch.setattr("open_run_lab.sdk.cmd.init.fork.current_pid", lambda: 99999)
 
         run_dir = ensure_run_dir(tmp_path, "run42", parallel="shared", retry_interval=0.01)
 
@@ -315,8 +315,8 @@ class TestEnsureRunDirShared:
 
     def test_shared_hostname_sanitize(self, tmp_path, monkeypatch):
         """hostname 中的非法字符应被替换为 _"""
-        monkeypatch.setattr("swanlab.sdk.cmd.init.socket.gethostname", lambda: "node:01.cluster/local")
-        monkeypatch.setattr("swanlab.sdk.cmd.init.fork.current_pid", lambda: 12345)
+        monkeypatch.setattr("open_run_lab.sdk.cmd.init.socket.gethostname", lambda: "node:01.cluster/local")
+        monkeypatch.setattr("open_run_lab.sdk.cmd.init.fork.current_pid", lambda: 12345)
 
         run_dir = ensure_run_dir(tmp_path, "run42", parallel="shared", retry_interval=0.01)
 
@@ -327,8 +327,8 @@ class TestEnsureRunDirShared:
 
     def test_shared_hostname_preserves_chinese(self, tmp_path, monkeypatch):
         """中文 hostname 应被保留"""
-        monkeypatch.setattr("swanlab.sdk.cmd.init.socket.gethostname", lambda: "我的电脑")
-        monkeypatch.setattr("swanlab.sdk.cmd.init.fork.current_pid", lambda: 12345)
+        monkeypatch.setattr("open_run_lab.sdk.cmd.init.socket.gethostname", lambda: "我的电脑")
+        monkeypatch.setattr("open_run_lab.sdk.cmd.init.fork.current_pid", lambda: 12345)
 
         run_dir = ensure_run_dir(tmp_path, "run42", parallel="shared", retry_interval=0.01)
 
@@ -337,8 +337,8 @@ class TestEnsureRunDirShared:
 
     def test_shared_hostname_all_illegal_fallback(self, tmp_path, monkeypatch):
         """全非法字符 hostname 应回退为 unknown_host"""
-        monkeypatch.setattr("swanlab.sdk.cmd.init.socket.gethostname", lambda: "<>:|?*#%")
-        monkeypatch.setattr("swanlab.sdk.cmd.init.fork.current_pid", lambda: 12345)
+        monkeypatch.setattr("open_run_lab.sdk.cmd.init.socket.gethostname", lambda: "<>:|?*#%")
+        monkeypatch.setattr("open_run_lab.sdk.cmd.init.fork.current_pid", lambda: 12345)
 
         run_dir = ensure_run_dir(tmp_path, "run42", parallel="shared", retry_interval=0.01)
 
@@ -348,8 +348,8 @@ class TestEnsureRunDirShared:
     def test_shared_hostname_truncation(self, tmp_path, monkeypatch):
         """超长 hostname 应被截断为 abc...yz 格式"""
         long_hostname = "a" * 100
-        monkeypatch.setattr("swanlab.sdk.cmd.init.socket.gethostname", lambda: long_hostname)
-        monkeypatch.setattr("swanlab.sdk.cmd.init.fork.current_pid", lambda: 12345)
+        monkeypatch.setattr("open_run_lab.sdk.cmd.init.socket.gethostname", lambda: long_hostname)
+        monkeypatch.setattr("open_run_lab.sdk.cmd.init.fork.current_pid", lambda: 12345)
 
         run_dir = ensure_run_dir(tmp_path, "run42", parallel="shared", retry_interval=0.01)
 
@@ -359,9 +359,9 @@ class TestEnsureRunDirShared:
 
     def test_shared_truncates_long_run_id(self, tmp_path, monkeypatch):
         """shared 模式下长 run_id 截断后不超限"""
-        monkeypatch.setattr("swanlab.sdk.cmd.init.socket.gethostname", lambda: "myhost")
-        monkeypatch.setattr("swanlab.sdk.cmd.init.fork.current_pid", lambda: 12345)
-        monkeypatch.setattr("swanlab.sdk.cmd.init.console.warning", MagicMock())
+        monkeypatch.setattr("open_run_lab.sdk.cmd.init.socket.gethostname", lambda: "myhost")
+        monkeypatch.setattr("open_run_lab.sdk.cmd.init.fork.current_pid", lambda: 12345)
+        monkeypatch.setattr("open_run_lab.sdk.cmd.init.console.warning", MagicMock())
 
         run_dir = ensure_run_dir(tmp_path, "a" * 512, parallel="shared", retry_interval=0.01, dir_max_length=80)
 
@@ -381,7 +381,7 @@ class TestEnsureRunDirShared:
 
     def test_small_dir_max_length_truncation(self, tmp_path, monkeypatch):
         """较小的 dir_max_length 时目录名字节长度仍不超限"""
-        monkeypatch.setattr("swanlab.sdk.cmd.init.console.warning", MagicMock())
+        monkeypatch.setattr("open_run_lab.sdk.cmd.init.console.warning", MagicMock())
 
         run_dir = ensure_run_dir(tmp_path, "a" * 512, retry_interval=0.01, dir_max_length=50)
 
@@ -389,8 +389,8 @@ class TestEnsureRunDirShared:
 
     def test_chinese_hostname_byte_length_within_limit(self, tmp_path, monkeypatch):
         """中文 hostname 的目录名 UTF-8 字节长度不超限"""
-        monkeypatch.setattr("swanlab.sdk.cmd.init.socket.gethostname", lambda: "我的电脑" * 20)
-        monkeypatch.setattr("swanlab.sdk.cmd.init.fork.current_pid", lambda: 12345)
+        monkeypatch.setattr("open_run_lab.sdk.cmd.init.socket.gethostname", lambda: "我的电脑" * 20)
+        monkeypatch.setattr("open_run_lab.sdk.cmd.init.fork.current_pid", lambda: 12345)
 
         run_dir = ensure_run_dir(tmp_path, "run42", parallel="shared", retry_interval=0.01, dir_max_length=80)
 
@@ -398,7 +398,7 @@ class TestEnsureRunDirShared:
 
     def test_chinese_run_id_byte_length_within_limit(self, tmp_path, monkeypatch):
         """包含中文的 run_id 截断后字节长度不超限"""
-        monkeypatch.setattr("swanlab.sdk.cmd.init.console.warning", MagicMock())
+        monkeypatch.setattr("open_run_lab.sdk.cmd.init.console.warning", MagicMock())
 
         run_dir = ensure_run_dir(tmp_path, "测试" * 100, retry_interval=0.01, dir_max_length=80)
 
@@ -410,10 +410,10 @@ class TestEnsureRunDirShared:
         def _raise_os_error():
             raise OSError("hostname lookup failed")
 
-        monkeypatch.setattr("swanlab.sdk.cmd.init.socket.gethostname", _raise_os_error)
-        monkeypatch.setattr("swanlab.sdk.cmd.init.fork.current_pid", lambda: 12345)
+        monkeypatch.setattr("open_run_lab.sdk.cmd.init.socket.gethostname", _raise_os_error)
+        monkeypatch.setattr("open_run_lab.sdk.cmd.init.fork.current_pid", lambda: 12345)
         warning = MagicMock()
-        monkeypatch.setattr("swanlab.sdk.cmd.init.console.warning", warning)
+        monkeypatch.setattr("open_run_lab.sdk.cmd.init.console.warning", warning)
 
         run_dir = ensure_run_dir(tmp_path, "run42", parallel="shared", retry_interval=0.01)
 

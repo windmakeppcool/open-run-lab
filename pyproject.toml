@@ -1,20 +1,17 @@
 [project]
-name = "swanlab"
+name = "open-run-lab"
 dynamic = ["readme", "version"]
 license = "Apache-2.0"
-description = "Python library for streamlined tracking and management of AI training processes."
+description = "OpenRunLab: a fully local tracking and visualization library for AI training."
 requires-python = ">=3.9"
 authors = [
-    { name = "Cunyue", email = "kang.li@emotionmachine.cn" },
-    { name = "CaddiesNew", email = "shaobo.niu@emotionmachine.cn" },
-    { name = "ZeYi Lin", email = "zeyi.lin@emotionmachine.cn" },
-    { name = "Kaikaikaifang", email = "kaifang.ji@emotionmachine.cn" },
-    { name = "Feudalman", email = "zirui.cai@emotionmachine.cn" },
+    { name = "OpenRunLab Contributors" },
 ]
 keywords = [
     "machine learning",
-    "reproducibility",
-    "visualization"
+    "experiment tracking",
+    "visualization",
+    "local-first"
 ]
 
 classifiers = [
@@ -98,13 +95,13 @@ dev = [
 ]
 
 [project.scripts]
-swanlab = "swanlab.cli:cli"
+orlab = "open_run_lab.cli:cli"
 
 [project.urls]
-"Homepage" = "https://swanlab.cn"
-"Source" = "https://github.com/SwanHubX/SwanLab"
-"Bug Reports" = "https://github.com/SwanHubX/SwanLab/issues"
-"Documentation" = "https://docs.swanlab.cn/zh/guide_cloud/general/what-is-swanlab.html"
+"Homepage" = "https://github.com/open-run-lab/open-run-lab"
+"Source" = "https://github.com/open-run-lab/open-run-lab"
+"Bug Reports" = "https://github.com/open-run-lab/open-run-lab/issues"
+"Documentation" = "https://github.com/open-run-lab/open-run-lab/tree/main/docs"
 
 [build-system]
 requires = ["hatchling", "hatch-fancy-pypi-readme>=22.5.0"]
@@ -112,7 +109,7 @@ build-backend = "hatchling.build"
 
 
 [tool.hatch.version]
-path = "swanlab/package.json"
+path = "open_run_lab/package.json"
 pattern = ".*\"version\":\\s*\"(?P<version>[^\"]+)\""
 
 [tool.hatch.metadata.hooks.fancy-pypi-readme]
@@ -121,27 +118,19 @@ fragments = [{ path = "README.md" }]
 
 [[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]
 pattern = "(?:\\./)?(readme_files)/"
-replacement = 'https://raw.githubusercontent.com/SwanHubX/swanlab/main/\g<1>/'
+replacement = 'https://raw.githubusercontent.com/open-run-lab/open-run-lab/main/\g<1>/'
 
 [[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]
 pattern = "README_EN.md"
-replacement = 'https://github.com/SwanHubX/SwanLab/blob/main/README_EN.md'
-
-[[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]
-pattern = "README_JP.md"
-replacement = 'https://github.com/SwanHubX/SwanLab/blob/main/README_JP.md'
-
-[[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]
-pattern = "README_RU.md"
-replacement = 'https://github.com/SwanHubX/SwanLab/blob/main/README_RU.md'
+replacement = 'https://github.com/open-run-lab/open-run-lab/blob/main/README_EN.md'
 
 [[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]
 pattern = "CONTRIBUTING.md"
-replacement = "https://github.com/SwanHubX/SwanLab/blob/main/CONTRIBUTING.md"
+replacement = "https://github.com/open-run-lab/open-run-lab/blob/main/CONTRIBUTING.md"
 
 [[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]
 pattern = "README.md"
-replacement = "https://github.com/SwanHubX/SwanLab/blob/main/README.md"
+replacement = "https://github.com/open-run-lab/open-run-lab/blob/main/README.md"
 
 [tool.basedpyright]
 pythonVersion = "3.9"
@@ -149,12 +138,12 @@ venvPath = "."
 venv = ".venv"
 typeCheckingMode = "standard"
 include = [
-    "swanlab",
+    "open_run_lab",
     "tests"
 ]
 ignore = [
-    "swanlab/proto",
-    "swanlab/integration"
+    "open_run_lab/proto",
+    "open_run_lab/integration"
 ]
 exclude = [
     "**/node_modules",
@@ -171,7 +160,7 @@ extraPaths = ["."]
 
 [tool.ruff]
 exclude = [
-    "swanlab/proto",
+    "open_run_lab/proto",
     ".bzr",
     ".direnv",
     ".eggs",

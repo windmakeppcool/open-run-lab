@@ -2,31 +2,31 @@
 @author: cunyue
 @file: test_settings_compatible.py
 @time: 2026/3/5 20:59
-@description: 测试 SwanLab 一些环境配置的向下兼容提取
+@description: 测试 OpenRunLab 一些环境配置的向下兼容提取
 """
 
 from pathlib import Path
 
-from swanlab.sdk.internal.settings import Settings
+from open_run_lab.sdk.internal.settings import Settings
 
 
 def test_e2e_legacy_env_compatibility(monkeypatch):
     """测试端到端：旧版扁平环境变量的向下兼容提取"""
     # 模拟旧版环境变量环境
     envs = {
-        "SWANLAB_EXP_NAME": "legacy_exp",
-        "SWANLAB_DESCRIPTION": "legacy_desc",
-        "SWANLAB_TAGS": "tag1, tag2",
-        "SWANLAB_WEBHOOK": "https://hook.com",
-        "SWANLAB_WEBHOOK_VALUE": "ping",
-        "SWANLAB_SAVE_DIR": "/tmp/swanlab",
+        "ORLAB_EXP_NAME": "legacy_exp",
+        "ORLAB_DESCRIPTION": "legacy_desc",
+        "ORLAB_TAGS": "tag1, tag2",
+        "ORLAB_WEBHOOK": "https://hook.com",
+        "ORLAB_WEBHOOK_VALUE": "ping",
+        "ORLAB_SAVE_DIR": "/tmp/orlab",
     }
     for k, v in envs.items():
         monkeypatch.setenv(k, v)
 
     # 核心：通过根 Settings 实例进行端到端加载
     s = Settings()
-    assert s.get_user_config_dir() == Path("/tmp/swanlab")
+    assert s.get_user_config_dir() == Path("/tmp/orlab")
 
     # 验证 experiment 子模块的兼容映射
     assert s.experiment.name == "legacy_exp"
@@ -40,8 +40,8 @@ def test_e2e_legacy_env_compatibility(monkeypatch):
 
 def test_e2e_explicit_input_priority(monkeypatch):
     """测试端到端优先级：代码显式传参 > 环境变量兜底"""
-    monkeypatch.setenv("SWANLAB_EXP_NAME", "env_exp")
-    monkeypatch.setenv("SWANLAB_WEBHOOK", "env_hook")
+    monkeypatch.setenv("ORLAB_EXP_NAME", "env_exp")
+    monkeypatch.setenv("ORLAB_WEBHOOK", "env_hook")
 
     # 模拟在初始化 Settings 时，通过字典/ kwargs 显式传入高优配置
     s = Settings.model_validate(

@@ -1,21 +1,21 @@
 ---
 name: pr-review-core
-description: Use when reviewing SwanLab Go core PRs under core/**, running gh pr diff or gh pr review for Go changes, checking cross-platform build tags/goroutine lifecycle/parent process monitoring/console logging/gRPC-protobuf contracts/golangci-lint/go test -race/Go module changes, or gating Go core merge readiness. Reviews locally first and only posts to GitHub after the user confirms.
+description: Use when reviewing OpenRunLab Go core PRs under core/**, running gh pr diff or gh pr review for Go changes, checking cross-platform build tags/goroutine lifecycle/parent process monitoring/console logging/gRPC-protobuf contracts/golangci-lint/go test -race/Go module changes, or gating Go core merge readiness. Reviews locally first and only posts to GitHub after the user confirms.
 ---
 
-# PR 审核 (SwanLab Go core)
+# PR 审核 (OpenRunLab Go core)
 
 ## 概述
 
-按照 SwanLab Go core 的仓库约定审核 Pull Request，并用 `gh` CLI 提交结构化结论。重点确认变更不引入跨平台兼容、进程生命周期、goroutine 安全、gRPC/protobuf 契约、诊断日志和工具链回归。
+按照 OpenRunLab Go core 的仓库约定审核 Pull Request，并用 `gh` CLI 提交结构化结论。重点确认变更不引入跨平台兼容、进程生命周期、goroutine 安全、gRPC/protobuf 契约、诊断日志和工具链回归。
 
 技术栈：**Go 1.26.5**（`core/.go-version` 与 `core/go.mod`）、**golangci-lint v2**、**gRPC**、**protobuf**、**golang.org/x/sys**。
 
 适用：`core/**` Go core PR 合并前审核、`gh pr diff` / `gh pr review`、检查 Go core 进程管理/控制台日志/proto/模块/工具链变更。
 
-不适用：SwanLab Python SDK PR（使用 `pr-review-lab`）、SwanLab-Cloud 前端 PR、无 PR 上下文的单文件编辑、只要求解释代码。
+不适用：OpenRunLab Python SDK PR（使用 `pr-review-lab`）、OpenRunLab 前端 PR、无 PR 上下文的单文件编辑、只要求解释代码。
 
-**CRITICAL — 审核 PR 前检查文件列表。当包含 `swanlab/**`、`protos/**`、`scripts/generate_protos.py`、`pyproject.toml` 或 `Makefile` 时，MUST 先用 Read 工具读取 [`../pr-review-lab/SKILL.md`](../pr-review-lab/SKILL.md) 及其 [`references/domain-contracts.md`](../pr-review-lab/references/domain-contracts.md)，按其中的 Python SDK 领域契约审核对应文件。审核结论需同时覆盖两侧范围。**
+**CRITICAL — 审核 PR 前检查文件列表。当包含 `open_run_lab/**`、`protos/**`、`scripts/generate_protos.py`、`pyproject.toml` 或 `Makefile` 时，MUST 先用 Read 工具读取 [`../pr-review-lab/SKILL.md`](../pr-review-lab/SKILL.md) 及其 [`references/domain-contracts.md`](../pr-review-lab/references/domain-contracts.md)，按其中的 Python SDK 领域契约审核对应文件。审核结论需同时覆盖两侧范围。**
 
 ## 审核流程
 
@@ -145,4 +145,4 @@ CI 覆盖 Ubuntu、Windows、macOS，跨平台构建标签和 `go test -race`。
 
 ## 参考
 
-- [pr-review-lab](../pr-review-lab/SKILL.md) — 审核流程、严重性、提交审核格式（共享）；当 PR 包含 `swanlab/**` 变更时必读其 [`references/domain-contracts.md`](../pr-review-lab/references/domain-contracts.md)
+- [pr-review-lab](../pr-review-lab/SKILL.md) — 审核流程、严重性、提交审核格式（共享）；当 PR 包含 `open_run_lab/**` 变更时必读其 [`references/domain-contracts.md`](../pr-review-lab/references/domain-contracts.md)

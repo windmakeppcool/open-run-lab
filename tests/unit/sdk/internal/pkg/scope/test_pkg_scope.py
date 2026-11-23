@@ -5,7 +5,7 @@
 @description: 测试 Scope 上下文作用域管理器的隔离、嵌套与冒泡机制
 """
 
-from swanlab.sdk.internal.pkg.scope import (
+from open_run_lab.sdk.internal.pkg.scope import (
     Scope,
     get_context,
     set_context,
@@ -65,7 +65,7 @@ def test_nested_scope_isolation_and_lookup():
 def test_nested_scope_bubble_up():
     """测试嵌套作用域开启 bubble_up=True 时的冒泡合并机制"""
     with Scope() as outer:
-        set_context("base_info", "swanlab")
+        set_context("base_info", "orlab")
 
         with Scope(bubble_up=True):
             set_context("deep_info", "metrics")

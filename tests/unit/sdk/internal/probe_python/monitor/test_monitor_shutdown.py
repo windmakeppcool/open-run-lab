@@ -4,12 +4,12 @@ from types import SimpleNamespace
 from typing import cast
 from unittest.mock import MagicMock
 
-from swanlab.sdk.internal.pkg import console
-from swanlab.sdk.internal.probe_python.context import ProbeConfig, ProbeContext
-from swanlab.sdk.internal.probe_python.monitor import Monitor
-from swanlab.sdk.internal.probe_python.protocol import CollectorProtocol
-from swanlab.sdk.internal.probe_python.typings import SystemScalar, SystemShim
-from swanlab.sdk.protocol import CoreProtocol
+from open_run_lab.sdk.internal.pkg import console
+from open_run_lab.sdk.internal.probe_python.context import ProbeConfig, ProbeContext
+from open_run_lab.sdk.internal.probe_python.monitor import Monitor
+from open_run_lab.sdk.internal.probe_python.protocol import CollectorProtocol
+from open_run_lab.sdk.internal.probe_python.typings import SystemScalar, SystemShim
+from open_run_lab.sdk.protocol import CoreProtocol
 
 
 class _Collector(CollectorProtocol):
@@ -33,17 +33,17 @@ def test_monitor_collects_without_executor_error_during_interpreter_shutdown(mon
             requirements=False,
             conda=False,
             git=False,
-            swanlab=False,
+            orlab=False,
             monitor=True,
             monitor_interval=3600,
             monitor_disk_dir=Path(tmp_path),
         )
     )
 
-    monkeypatch.setattr("swanlab.sdk.internal.probe_python.monitor.CPU.new", lambda _shim: (collector, [scalar]))
-    monkeypatch.setattr("swanlab.sdk.internal.probe_python.monitor.Memory.new", lambda _shim: None)
-    monkeypatch.setattr("swanlab.sdk.internal.probe_python.monitor.Apple.new", lambda _shim: None)
-    monkeypatch.setattr("swanlab.sdk.internal.pkg.timer.Timer.start", lambda self: self)
+    monkeypatch.setattr("open_run_lab.sdk.internal.probe_python.monitor.CPU.new", lambda _shim: (collector, [scalar]))
+    monkeypatch.setattr("open_run_lab.sdk.internal.probe_python.monitor.Memory.new", lambda _shim: None)
+    monkeypatch.setattr("open_run_lab.sdk.internal.probe_python.monitor.Apple.new", lambda _shim: None)
+    monkeypatch.setattr("open_run_lab.sdk.internal.pkg.timer.Timer.start", lambda self: self)
 
     trace_mock = MagicMock()
     monkeypatch.setattr(console, "trace", trace_mock)

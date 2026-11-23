@@ -1,4 +1,4 @@
-// Package log 是 SwanLab core 的内部诊断日志模块，镜像 swanlab/sdk/internal/pkg/console/log。
+// Package log 是 OpenRunLab core 的内部诊断日志模块，镜像 open_run_lab/sdk/internal/pkg/console/log。
 //
 // 零额外依赖：日志在内存中缓冲，直到 Init 绑定日志目录后一次性 flush 到轮转文件
 // (debug-core.log)，文件权限强制为 0600。

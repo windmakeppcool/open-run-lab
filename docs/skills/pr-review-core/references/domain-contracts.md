@@ -1,4 +1,4 @@
-# SwanLab Go core 领域审核契约
+# OpenRunLab Go core 领域审核契约
 
 先根据 PR 文件列表判断适用范围，只读取与变更相关的章节。所有 Go 应用代码还需检查"Go core 横切质量与代码规范"；涉及凭据、网络、日志、文件路径或用户数据时，再检查"安全与隐私"（同 `pr-review-lab`）。
 
@@ -21,7 +21,7 @@
 
 适用路径：`core/internal/pkg/console/**`（含 `log/`）。
 
-- 与 Python `swanlab/sdk/internal/pkg/console` 的镜像关系必须保持：`Info`/`Debug`/`Warning`/`Error`/`Trace` 语义、`SWANLAB_DEBUG` 和 `NO_COLOR` 环境变量、loguru 风格格式（时间戳 | 级别 | 位置 - 消息）。
+- 与 Python `open_run_lab/sdk/internal/pkg/console` 的镜像关系必须保持：`Info`/`Debug`/`Warning`/`Error`/`Trace` 语义、`ORLAB_DEBUG` 和 `NO_COLOR` 环境变量、loguru 风格格式（时间戳 | 级别 | 位置 - 消息）。
 - `console.Init`/`Reset` 和 `log.Init`/`Reset` 必须保持对称。`Logger` 持有文件句柄，Go 无析构函数，重新绑定前必须先 `Reset` 关闭旧句柄。
 - 日志文件权限强制 0600（`os.Chmod` 不受 umask 影响）；轮转（`maxBytes` × `backupCount`）保持备份链完整。
 - 内存缓冲上限（`memoryCapacity`）超出时丢弃最旧记录，不能无界增长。
@@ -39,7 +39,7 @@
 - `core/proto/**` 是 `make proto` 生成的 Go 代码，不得手动编辑。变更 `protos/**` 源定义后必须重新生成并同时提交 Python 和 Go 两侧输出。
 - `scripts/generate_protos.py` 对 Go 生成代码的导入路径不做改写（仅改写 Python 侧）；不要意外破坏 Go 的 package 声明。
 - 保持 `.golangci.yml` 中 `core/proto` 的 generated 排除（`exclusions.generated: lax`）；不要移除。
-- Go proto 包路径（`github.com/swanhubx/swanlab/core/proto/swanlab/...`）与 `goimports` local-prefixes 配置一致。
+- Go proto 包路径（`github.com/open-run-lab/open-run-lab/core/proto/orlab/...`）与 `goimports` local-prefixes 配置一致。
 
 ## Go 模块、工具链与构建
 

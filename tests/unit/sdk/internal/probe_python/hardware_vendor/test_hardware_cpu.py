@@ -10,8 +10,8 @@ from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
 
-from swanlab.sdk.internal.probe_python.hardware_vendor.cpu import CPU
-from swanlab.sdk.internal.probe_python.typings import CPUSnapshot, PlatformSlug, SystemShim
+from open_run_lab.sdk.internal.probe_python.hardware_vendor.cpu import CPU
+from open_run_lab.sdk.internal.probe_python.typings import CPUSnapshot, PlatformSlug, SystemShim
 
 
 class TestCPUGet:

@@ -1,19 +1,19 @@
 ---
 name: pr-review-lab
-description: Use when reviewing SwanLab Python SDK PRs, running gh pr diff or gh pr review, checking public API/type stubs/run lifecycle/settings/API/CLI/transport/concurrency/integrations/media/probe/protobuf/packaging/Python compatibility changes, or gating SDK merge readiness. Reviews locally first and only posts to GitHub after the user confirms.
+description: Use when reviewing OpenRunLab Python SDK PRs, running gh pr diff or gh pr review, checking public API/type stubs/run lifecycle/settings/API/CLI/transport/concurrency/integrations/media/probe/protobuf/packaging/Python compatibility changes, or gating SDK merge readiness. Reviews locally first and only posts to GitHub after the user confirms.
 ---
 
-# PR 审核 (SwanLab)
+# PR 审核 (OpenRunLab)
 
 ## 概述
 
-按照 SwanLab Python SDK 的仓库约定审核 Pull Request，并用 `gh` CLI 提交结构化结论。重点确认变更不引入公共 API、运行生命周期、数据上传、配置认证、跨平台兼容、安全、性能、构建和可维护性回归。
+按照 OpenRunLab Python SDK 的仓库约定审核 Pull Request，并用 `gh` CLI 提交结构化结论。重点确认变更不引入公共 API、运行生命周期、数据上传、配置认证、跨平台兼容、安全、性能、构建和可维护性回归。
 
 技术栈：**Python 3.9-3.14**、**uv**、**Hatch**、**pytest**、**Ruff**、**basedpyright**、**Pydantic**、**requests**、**Protobuf**。
 
-适用：SwanLab SDK PR 合并前审核、`gh pr diff` / `gh pr review`、检查 SDK/API/CLI/集成/Proto/依赖/测试变更。
+适用：OpenRunLab SDK PR 合并前审核、`gh pr diff` / `gh pr review`、检查 SDK/API/CLI/集成/Proto/依赖/测试变更。
 
-不适用：SwanLab-Cloud 前端 PR、其他仓库 PR、无 PR 上下文的单文件编辑、只要求解释代码。
+不适用：OpenRunLab 前端 PR、其他仓库 PR、无 PR 上下文的单文件编辑、只要求解释代码。
 
 **CRITICAL — 审核 PR 前检查文件列表。当包含 `core/**`、`protos/**` 或 `scripts/generate_protos.py` 时，MUST 先用 Read 工具读取 [`../pr-review-core/SKILL.md`](../pr-review-core/SKILL.md) 及其 [`references/domain-contracts.md`](../pr-review-core/references/domain-contracts.md)，按其中的 Go core 领域契约审核对应文件。审核结论需同时覆盖两侧范围。**
 
@@ -71,19 +71,19 @@ git checkout <原分支>
 
 | 变更路径或内容                                                                                                                                                                                       | 读取章节                                 |
 | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
-| `swanlab/__init__.py`、`swanlab/__init__.pyi`、`swanlab/sdk/__init__.py`、`swanlab/sdk/typings/**`、`swanlab/sdk/protocol/**`、`swanlab/exceptions.py`                                               | 公共 API 与类型兼容                      |
-| `swanlab/sdk/cmd/**`、`swanlab/sdk/internal/run/**`、`swanlab/sdk/internal/context/**`、`swanlab/sdk/internal/bus/**`、`swanlab/sdk/internal/impl.py`                                                | Run 生命周期与运行时组件                 |
-| `swanlab/sdk/internal/core_python/**`（含 `transport/**`、`store/**`、`metrics/**`、`watcher/**`、`sync.py`）                                                                                        | Record、Core 与传输                      |
-| `swanlab/sdk/internal/settings/**`、`swanlab/sdk/internal/pkg/client/**`、`swanlab/sdk/internal/pkg/nrc/**`、`swanlab/sdk/internal/core_python/client/**`、`swanlab/sdk/internal/core_python/api/**` | 配置、认证与 HTTP 客户端                 |
-| `swanlab/api/**`、`swanlab/cli/**`                                                                                                                                                                   | Public API 与 CLI                        |
-| `swanlab/sdk/internal/run/transforms/**`、文件保存和媒体处理                                                                                                                                         | 媒体、转换与文件                         |
-| `swanlab/sdk/internal/probe_python/**`（含 `hardware_vendor/**`、`monitor/**`、`environment/**`）、`swanlab/vendor/**`                                                                               | 硬件与环境探测                           |
-| `swanlab/integration/**`、`swanlab/converter/**`、`swanlab/plugin/**`                                                                                                                                | 集成、转换器与插件                       |
-| `swanlab/sdk/internal/pkg/**`（`safe/`、`fs/`、`console/`、`fork/`、`timer/`、`executor/`、`scope/`、`adapter/` 等）、`swanlab/utils/**`                                                             | 共享工具与内部 pkg                       |
-| `protos/**`、`swanlab/proto/**`、`core/proto/**`                                                                                                                                                     | Protobuf 与生成代码                      |
-| `pyproject.toml`、`uv.lock`、`Makefile`、`swanlab/package.json`、`.github/workflows/**`                                                                                                              | 构建、依赖与发布                         |
+| `open_run_lab/__init__.py`、`open_run_lab/__init__.pyi`、`open_run_lab/sdk/__init__.py`、`open_run_lab/sdk/typings/**`、`open_run_lab/sdk/protocol/**`、`open_run_lab/exceptions.py`                                               | 公共 API 与类型兼容                      |
+| `open_run_lab/sdk/cmd/**`、`open_run_lab/sdk/internal/run/**`、`open_run_lab/sdk/internal/context/**`、`open_run_lab/sdk/internal/bus/**`、`open_run_lab/sdk/internal/impl.py`                                                | Run 生命周期与运行时组件                 |
+| `open_run_lab/sdk/internal/core_python/**`（含 `transport/**`、`store/**`、`metrics/**`、`watcher/**`、`sync.py`）                                                                                        | Record、Core 与传输                      |
+| `open_run_lab/sdk/internal/settings/**`、`open_run_lab/sdk/internal/pkg/client/**`、`open_run_lab/sdk/internal/pkg/nrc/**`、`open_run_lab/sdk/internal/core_python/client/**`、`open_run_lab/sdk/internal/core_python/api/**` | 配置、认证与 HTTP 客户端                 |
+| `open_run_lab/api/**`、`open_run_lab/cli/**`                                                                                                                                                                   | Public API 与 CLI                        |
+| `open_run_lab/sdk/internal/run/transforms/**`、文件保存和媒体处理                                                                                                                                         | 媒体、转换与文件                         |
+| `open_run_lab/sdk/internal/probe_python/**`（含 `hardware_vendor/**`、`monitor/**`、`environment/**`）、`open_run_lab/vendor/**`                                                                               | 硬件与环境探测                           |
+| `open_run_lab/integration/**`、`open_run_lab/converter/**`、`open_run_lab/plugin/**`                                                                                                                                | 集成、转换器与插件                       |
+| `open_run_lab/sdk/internal/pkg/**`（`safe/`、`fs/`、`console/`、`fork/`、`timer/`、`executor/`、`scope/`、`adapter/` 等）、`open_run_lab/utils/**`                                                             | 共享工具与内部 pkg                       |
+| `protos/**`、`open_run_lab/proto/**`、`core/proto/**`                                                                                                                                                     | Protobuf 与生成代码                      |
+| `pyproject.toml`、`uv.lock`、`Makefile`、`open_run_lab/package.json`、`.github/workflows/**`                                                                                                              | 构建、依赖与发布                         |
 | `tests/**`                                                                                                                                                                                           | 测试与验证                               |
-| `swanlab/deprecated/**`                                                                                                                                                                              | 公共 API 与类型兼容 + 横切质量与代码规范 |
+| `open_run_lab/deprecated/**`                                                                                                                                                                              | 公共 API 与类型兼容 + 横切质量与代码规范 |
 | 所有 Python 代码、配置和依赖                                                                                                                                                                         | 横切质量与代码规范                       |
 | 凭据、网络、日志、文件路径、用户数据                                                                                                                                                                 | 安全与隐私                               |
 
@@ -165,7 +165,7 @@ Review JSON 使用以下结构：
   "body": "## 审核结论: 要求修改\n\n## 本次 PR 解决的问题\n<一句话概述>\n\n## 审核范围\n<范围清单>\n\n## 未挂行发现\n<没有则写：无>\n\n## 验证\n<命令与 Actions 状态>",
   "comments": [
     {
-      "path": "swanlab/path/file.py",
+      "path": "open_run_lab/path/file.py",
       "line": 42,
       "side": "RIGHT",
       "body": "**必须修改:** <问题>\n\n影响：<影响>\n\n建议：<建议>"

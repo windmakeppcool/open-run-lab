@@ -2,7 +2,7 @@
 @author: cunyue
 @file: generate_protos.py
 @time: 2026/3/11 18:36
-@description: 生成 SwanLab ProtoBuf 文件
+@description: 生成 OpenRunLab ProtoBuf 文件
 
 对于Go部分，你需要安装：
 
@@ -21,7 +21,7 @@ from pathlib import Path
 
 def generate_python_protos(proto_dir: Path, output_dir: Path):
     """
-    Generate Python code to swanlab/proto.
+    Generate Python code to open_run_lab/proto.
     """
     print(f"Generating Python protos from {proto_dir} to {output_dir}...")
 
@@ -55,14 +55,14 @@ def generate_python_protos(proto_dir: Path, output_dir: Path):
     else:
         print("Python protos generated successfully.")
 
-    # 2. 修复导入路径 (SwanLab 特供逻辑)
-    # 我们需要将 'from swanlab.xxx.v1 import ...'
-    # 替换为 'from swanlab.proto.swanlab.xxx.v1 import ...'
+    # 2. 修复导入路径 (OpenRunLab 特供逻辑)
+    # 我们需要将 'from orlab.xxx.v1 import ...'
+    # 替换为 'from open_run_lab.proto.orlab.xxx.v1 import ...'
     print("Fixing import paths for internal SDK usage...")
 
     # 匹配模式：针对你展示的生成的代码格式
-    # 寻找以 from swanlab 开头的导入行
-    import_re = re.compile(r"^from swanlab\.(.*) import (.*) as (.*)$", re.MULTILINE)
+    # 寻找以 from orlab 开头的导入行
+    import_re = re.compile(r"^from orlab\.(.*) import (.*) as (.*)$", re.MULTILINE)
 
     for file_path in output_dir.rglob("*"):
         if file_path.suffix not in (".py", ".pyi") or file_path.name == "__init__.py":
@@ -72,8 +72,8 @@ def generate_python_protos(proto_dir: Path, output_dir: Path):
             content = f.read()
 
         # 核心修复：插入 .proto 路径层级
-        # 结果会变成: from swanlab.proto.swanlab.run.v1 import run_pb2 as ...
-        fixed_content = import_re.sub(r"from swanlab.proto.swanlab.\1 import \2 as \3", content)
+        # 结果会变成: from open_run_lab.proto.orlab.run.v1 import run_pb2 as ...
+        fixed_content = import_re.sub(r"from open_run_lab.proto.orlab.\1 import \2 as \3", content)
 
         # 兼容性修复：处理可能存在的 'import xxx_pb2' 相对引用
         fixed_content = re.sub(r"^import (.*_pb2)", r"from . import \1", fixed_content, flags=re.MULTILINE)
@@ -127,10 +127,10 @@ if __name__ == "__main__":
     # Source: protos/
     proto_source = project_root / "protos"
 
-    # Python: swanlab/proto/
-    python_output = project_root / "swanlab" / "proto"
+    # Python: open_run_lab/proto/
+    python_output = project_root / "open_run_lab" / "proto"
 
-    # Go: core/proto/ (Part of the swanlab-core module)
+    # Go: core/proto/ (Part of the orlab-core module)
     go_output = project_root / "core" / "proto"
 
     # Ensure core/proto exists for the guide/placeholder

@@ -10,8 +10,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from swanlab.sdk.internal.probe_python.environment import runtime
-from swanlab.sdk.internal.probe_python.typings import RuntimeSnapshot
+from open_run_lab.sdk.internal.probe_python.environment import runtime
+from open_run_lab.sdk.internal.probe_python.typings import RuntimeSnapshot
 
 
 class TestGetOs:
@@ -168,7 +168,7 @@ class TestGetCommand:
         with (
             patch("platform.system", return_value="Linux"),
             patch(
-                "swanlab.sdk.internal.probe_python.environment.runtime._get_command_linux", return_value=linux_result
+                "open_run_lab.sdk.internal.probe_python.environment.runtime._get_command_linux", return_value=linux_result
             ),
             patch.object(sys, "argv", argv),
         ):
@@ -215,20 +215,20 @@ class TestRuntimeGet:
     def test_get_returns_runtime_snapshot(self):
         """get() 返回 RuntimeSnapshot 实例"""
         with (
-            patch("swanlab.sdk.internal.probe_python.environment.runtime.get_os", return_value="macOS-14.0"),
-            patch("swanlab.sdk.internal.probe_python.environment.runtime.get_os_pretty", return_value="macOS Sonoma"),
-            patch("swanlab.sdk.internal.probe_python.environment.runtime.get_hostname", return_value="my-mac"),
-            patch("swanlab.sdk.internal.probe_python.environment.runtime.get_pid", return_value=12345),
-            patch("swanlab.sdk.internal.probe_python.environment.runtime.get_cwd", return_value="/home/user"),
-            patch("swanlab.sdk.internal.probe_python.environment.runtime.get_python_version", return_value="3.11.0"),
+            patch("open_run_lab.sdk.internal.probe_python.environment.runtime.get_os", return_value="macOS-14.0"),
+            patch("open_run_lab.sdk.internal.probe_python.environment.runtime.get_os_pretty", return_value="macOS Sonoma"),
+            patch("open_run_lab.sdk.internal.probe_python.environment.runtime.get_hostname", return_value="my-mac"),
+            patch("open_run_lab.sdk.internal.probe_python.environment.runtime.get_pid", return_value=12345),
+            patch("open_run_lab.sdk.internal.probe_python.environment.runtime.get_cwd", return_value="/home/user"),
+            patch("open_run_lab.sdk.internal.probe_python.environment.runtime.get_python_version", return_value="3.11.0"),
             patch(
-                "swanlab.sdk.internal.probe_python.environment.runtime.get_python_verbose", return_value="3.11.0 (main)"
+                "open_run_lab.sdk.internal.probe_python.environment.runtime.get_python_verbose", return_value="3.11.0 (main)"
             ),
             patch(
-                "swanlab.sdk.internal.probe_python.environment.runtime.get_python_executable",
+                "open_run_lab.sdk.internal.probe_python.environment.runtime.get_python_executable",
                 return_value="/usr/bin/python3",
             ),
-            patch("swanlab.sdk.internal.probe_python.environment.runtime.get_command", return_value="python app.py"),
+            patch("open_run_lab.sdk.internal.probe_python.environment.runtime.get_command", return_value="python app.py"),
         ):
             result = runtime.get()
 
@@ -250,7 +250,7 @@ class TestRuntimeGet:
             "get_python_executable",
             "get_command",
         ]
-        with patch("swanlab.sdk.internal.probe_python.environment.runtime") as mock_runtime:
+        with patch("open_run_lab.sdk.internal.probe_python.environment.runtime") as mock_runtime:
             for m in mocks:
                 patcher = patch.object(mock_runtime, m, return_value=None)
                 patcher.start()

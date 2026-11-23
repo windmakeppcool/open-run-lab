@@ -2,7 +2,7 @@
 @author: cunyue
 @file: test_init_e2e.py
 @time: 2026/3/14
-@description: 测试 swanlab.init() 的端到端行为（纯本地版本）
+@description: 测试 open_run_lab.init() 的端到端行为（纯本地版本）
 
 测试分组：
   - TestInitDisabledMode     : disabled 模式，无文件系统写入
@@ -19,13 +19,13 @@ from typing import cast
 import pytest
 import responses
 
-from swanlab.sdk.cmd.init import init
-from swanlab.sdk.cmd.merge_settings import merge_settings
-from swanlab.sdk.internal.bus import RunEmitter
-from swanlab.sdk.internal.run import has_run
-from swanlab.sdk.internal.run.components import BackgroundConsumer, NullConsumer, NullEmitter
-from swanlab.sdk.internal.settings import Settings, create_settings
-from swanlab.sdk.typings.run import ModeType
+from open_run_lab.sdk.cmd.init import init
+from open_run_lab.sdk.cmd.merge_settings import merge_settings
+from open_run_lab.sdk.internal.bus import RunEmitter
+from open_run_lab.sdk.internal.run import has_run
+from open_run_lab.sdk.internal.run.components import BackgroundConsumer, NullConsumer, NullEmitter
+from open_run_lab.sdk.internal.settings import Settings, create_settings
+from open_run_lab.sdk.typings.run import ModeType
 
 
 class TestInitDisabledMode:
@@ -118,8 +118,8 @@ class TestInitOfflineMode:
         run = init(mode="offline", project="webhook-project", settings=webhook_settings)
         assert len(responses.calls) == 1
         payload = json.loads(responses.calls[0].request.body)  # type: ignore[arg-type]
-        assert payload["swanlab"]["mode"] == "offline"
-        assert payload["swanlab"]["run_dir"] == str(run._ctx.run_dir)
+        assert payload["orlab"]["mode"] == "offline"
+        assert payload["orlab"]["run_dir"] == str(run._ctx.run_dir)
         run.finish()
 
 
@@ -215,7 +215,7 @@ def test_run_finish_clears_global_run():
 
 def test_init_accepts_callback_instances():
     """callbacks 参数应接受合法 Callback 实例（不做网络请求）"""
-    from swanlab.sdk.protocol import Callback
+    from open_run_lab.sdk.protocol import Callback
 
     class _NoopCallback(Callback):
         @property

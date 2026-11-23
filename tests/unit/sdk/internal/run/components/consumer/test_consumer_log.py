@@ -14,10 +14,10 @@ from unittest.mock import MagicMock
 
 from google.protobuf.timestamp_pb2 import Timestamp
 
-from swanlab.sdk.internal.bus.events import MetricDefineEvent, MetricLogEvent
-from swanlab.sdk.internal.context import RunContext
-from swanlab.sdk.internal.pkg import console as pkg_console
-from swanlab.sdk.internal.run.components.consumer import BackgroundConsumer
+from open_run_lab.sdk.internal.bus.events import MetricDefineEvent, MetricLogEvent
+from open_run_lab.sdk.internal.context import RunContext
+from open_run_lab.sdk.internal.pkg import console as pkg_console
+from open_run_lab.sdk.internal.run.components.consumer import BackgroundConsumer
 
 
 def _make_consumer(tmp_path: Path) -> BackgroundConsumer:
@@ -50,7 +50,7 @@ class TestPlainPath:
         warning = MagicMock()
         monkeypatch.setattr(pkg_console, "warning", warning)
         consumer = _make_consumer(tmp_path)
-        consumer._handle_event(_log_event({"__swanlab__.cpu": 1, "loss": 2}))
+        consumer._handle_event(_log_event({"__orlab__.cpu": 1, "loss": 2}))
 
         warning.assert_called_once()
         assert len(consumer._scalar_batch) == 1

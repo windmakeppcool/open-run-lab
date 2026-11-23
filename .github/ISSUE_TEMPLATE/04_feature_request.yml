@@ -8,16 +8,16 @@ type: feature
 body:
   - type: markdown
     attributes:
-      value: 感谢您花时间改进 SwanLab！
+      value: 感谢您花时间改进 OpenRunLab！
   - type: markdown
     attributes:
       value: |
         请注意：
 
-        - 如果您需要项目相关的具体支持，可以考虑[寻求社区支持](https://docs.swanlab.cn/guide_cloud/community/online-support.html)。
-        - 如果功能未按预期工作，您可能需要[创建 Bug 报告](https://github.com/SwanHubX/SwanLab/issues/new/choose)。
-        - 请仔细查阅[文档](https://docs.swanlab.cn)，确认您请求的功能是否已支持。
-        - 请检查[现有议题](https://github.com/SwanHubX/SwanLab/issues)，确认您的功能请求是否已被讨论过。
+        - 如果您需要项目相关的具体支持，可以在 [GitHub Issues](https://github.com/open-run-lab/open-run-lab/issues) 中提问。
+        - 如果功能未按预期工作，您可能需要[创建 Bug 报告](https://github.com/open-run-lab/open-run-lab/issues/new/choose)。
+        - 请仔细查阅[项目文档](https://github.com/open-run-lab/open-run-lab)，确认您请求的功能是否已支持。
+        - 请检查[现有议题](https://github.com/open-run-lab/open-run-lab/issues)，确认您的功能请求是否已被讨论过。
 
         如果您有尚未讨论的功能请求，请完整填写此表单。
   - type: textarea

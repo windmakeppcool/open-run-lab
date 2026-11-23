@@ -1,0 +1,24 @@
+"""
+@author: cunyue
+@description: callbacks相关的即将被弃用的命令
+"""
+
+import warnings
+
+from typing_extensions import deprecated
+
+from open_run_lab.sdk.cmd.merge_callbacks import merge_callbacks
+
+
+@deprecated(
+    "`open_run_lab.register_callbacks()` is deprecated and will be removed in v0.11, "
+    "use `open_run_lab.merge_callbacks()` instead."
+)
+def register_callbacks(*args, **kwargs):
+    warnings.warn(
+        "`open_run_lab.register_callbacks()` is deprecated and will be removed in v0.11, "
+        "use `open_run_lab.merge_callbacks()` instead",
+        FutureWarning,
+        stacklevel=2,
+    )
+    return merge_callbacks(*args, **kwargs)

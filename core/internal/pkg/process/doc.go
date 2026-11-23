@@ -1,6 +1,6 @@
-// Package process 管理 SwanLab core 与其父进程之间的生命周期关系。
+// Package process 管理 OpenRunLab core 与其父进程之间的生命周期关系。
 //
-// SwanLab core 通常由 Python SDK 作为子进程启动。正常退出时应由上层通过业务接口
+// OpenRunLab core 通常由 Python SDK 作为子进程启动。正常退出时应由上层通过业务接口
 // 通知 core 完成清理；本包处理的是父进程崩溃、被强制终止等无法发送退出通知的兜底场景，
 // 防止 core 成为孤儿进程。
 //
@@ -34,5 +34,5 @@
 //     signaled。该方式不依赖 Windows 上不会随父进程退出而变化的 PPID。
 //   - 其他平台：定期比较 os.Getppid() 与预期 PID；父进程退出并发生 reparent 后关闭通知 channel。
 //
-// 本包位于 internal 下，仅供 SwanLab core 内部使用。
+// 本包位于 internal 下，仅供 OpenRunLab core 内部使用。
 package process

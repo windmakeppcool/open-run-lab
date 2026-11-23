@@ -9,11 +9,11 @@
 #
 # import pytest
 #
-# from swanlab.sdk.internal.context import RunConfig, RunContext
-# from swanlab.sdk.internal.probe_python import _new_raw
-# from swanlab.sdk.internal.settings import Settings
-# from swanlab.sdk.internal.settings.metadata import EnvironmentSettings, MonitorSettings
-# from swanlab.sdk.typings.run.system import (
+# from open_run_lab.sdk.internal.context import RunConfig, RunContext
+# from open_run_lab.sdk.internal.probe_python import _new_raw
+# from open_run_lab.sdk.internal.settings import Settings
+# from open_run_lab.sdk.internal.settings.metadata import EnvironmentSettings, MonitorSettings
+# from open_run_lab.sdk.typings.run.system import (
 #     AppleSiliconSnapshot,
 #     CPUSnapshot,
 #     GitSnapshot,
@@ -51,10 +51,10 @@
 # def _mock_env_none():
 #     """返回隔离环境采集的 patch 上下文列表"""
 #     return [
-#         patch("swanlab.sdk.internal.probe_python.git.get", return_value=None),
-#         patch("swanlab.sdk.internal.probe_python.runtime.get", return_value=None),
-#         patch("swanlab.sdk.internal.probe_python.conda.get", return_value=None),
-#         patch("swanlab.sdk.internal.probe_python.requirements.get", return_value=None),
+#         patch("open_run_lab.sdk.internal.probe_python.git.get", return_value=None),
+#         patch("open_run_lab.sdk.internal.probe_python.runtime.get", return_value=None),
+#         patch("open_run_lab.sdk.internal.probe_python.conda.get", return_value=None),
+#         patch("open_run_lab.sdk.internal.probe_python.requirements.get", return_value=None),
 #     ]
 #
 #
@@ -66,10 +66,10 @@
 # class TestHardwareCollectionHappyPath:
 #     """测试不同平台下硬件信息的正常采集"""
 #
-#     @patch("swanlab.sdk.internal.probe_python.Memory")
-#     @patch("swanlab.sdk.internal.probe_python.CPU")
-#     @patch("swanlab.sdk.internal.probe_python.Apple")
-#     @patch("swanlab.sdk.internal.probe_python.sys.platform", "darwin")
+#     @patch("open_run_lab.sdk.internal.probe_python.Memory")
+#     @patch("open_run_lab.sdk.internal.probe_python.CPU")
+#     @patch("open_run_lab.sdk.internal.probe_python.Apple")
+#     @patch("open_run_lab.sdk.internal.probe_python.sys.platform", "darwin")
 #     def test_apple_silicon_macos(self, mock_apple, mock_cpu, mock_memory, make_ctx):
 #         """macOS Apple Silicon: apple_silicon 有值，cpu/memory 为 None"""
 #         mock_apple.get.return_value = AppleSiliconSnapshot(
@@ -92,10 +92,10 @@
 #             for p in env_patches:
 #                 p.stop()
 #
-#     @patch("swanlab.sdk.internal.probe_python.Memory")
-#     @patch("swanlab.sdk.internal.probe_python.CPU")
-#     @patch("swanlab.sdk.internal.probe_python.Apple")
-#     @patch("swanlab.sdk.internal.probe_python.sys.platform", "linux")
+#     @patch("open_run_lab.sdk.internal.probe_python.Memory")
+#     @patch("open_run_lab.sdk.internal.probe_python.CPU")
+#     @patch("open_run_lab.sdk.internal.probe_python.Apple")
+#     @patch("open_run_lab.sdk.internal.probe_python.sys.platform", "linux")
 #     def test_linux_cpu_memory(self, mock_apple, mock_cpu, mock_memory, make_ctx):
 #         """Linux: cpu 和 memory 有值，apple_silicon 为 None"""
 #         mock_apple.get.return_value = None
@@ -119,10 +119,10 @@
 #             for p in env_patches:
 #                 p.stop()
 #
-#     @patch("swanlab.sdk.internal.probe_python.Memory")
-#     @patch("swanlab.sdk.internal.probe_python.CPU")
-#     @patch("swanlab.sdk.internal.probe_python.Apple")
-#     @patch("swanlab.sdk.internal.probe_python.sys.platform", "darwin")
+#     @patch("open_run_lab.sdk.internal.probe_python.Memory")
+#     @patch("open_run_lab.sdk.internal.probe_python.CPU")
+#     @patch("open_run_lab.sdk.internal.probe_python.Apple")
+#     @patch("open_run_lab.sdk.internal.probe_python.sys.platform", "darwin")
 #     def test_macos_intel_fallback(self, mock_apple, mock_cpu, mock_memory, make_ctx):
 #         """macOS Intel: Apple.get() 返回 None，回退到 CPU + Memory"""
 #         mock_apple.get.return_value = None
@@ -142,10 +142,10 @@
 #             for p in env_patches:
 #                 p.stop()
 #
-#     @patch("swanlab.sdk.internal.probe_python.Memory")
-#     @patch("swanlab.sdk.internal.probe_python.CPU")
-#     @patch("swanlab.sdk.internal.probe_python.Apple")
-#     @patch("swanlab.sdk.internal.probe_python.sys.platform", "win32")
+#     @patch("open_run_lab.sdk.internal.probe_python.Memory")
+#     @patch("open_run_lab.sdk.internal.probe_python.CPU")
+#     @patch("open_run_lab.sdk.internal.probe_python.Apple")
+#     @patch("open_run_lab.sdk.internal.probe_python.sys.platform", "win32")
 #     def test_windows_cpu_memory(self, mock_apple, mock_cpu, mock_memory, make_ctx):
 #         """Windows: cpu 和 memory 有值"""
 #         mock_apple.get.return_value = None
@@ -164,10 +164,10 @@
 #             for p in env_patches:
 #                 p.stop()
 #
-#     @patch("swanlab.sdk.internal.probe_python.Memory")
-#     @patch("swanlab.sdk.internal.probe_python.CPU")
-#     @patch("swanlab.sdk.internal.probe_python.Apple")
-#     @patch("swanlab.sdk.internal.probe_python.sys.platform", "freebsd13")
+#     @patch("open_run_lab.sdk.internal.probe_python.Memory")
+#     @patch("open_run_lab.sdk.internal.probe_python.CPU")
+#     @patch("open_run_lab.sdk.internal.probe_python.Apple")
+#     @patch("open_run_lab.sdk.internal.probe_python.sys.platform", "freebsd13")
 #     def test_unknown_platform(self, mock_apple, mock_cpu, mock_memory, make_ctx):
 #         """未知平台: 所有 vendor 返回 None，非 linux/darwin 平台 slug 为 windows"""
 #         mock_apple.get.return_value = None
@@ -198,10 +198,10 @@
 # class TestHardwareCollectionSettingsGating:
 #     """测试 Settings 对硬件采集行为的控制"""
 #
-#     @patch("swanlab.sdk.internal.probe_python.Memory")
-#     @patch("swanlab.sdk.internal.probe_python.CPU")
-#     @patch("swanlab.sdk.internal.probe_python.Apple")
-#     @patch("swanlab.sdk.internal.probe_python.sys.platform", "linux")
+#     @patch("open_run_lab.sdk.internal.probe_python.Memory")
+#     @patch("open_run_lab.sdk.internal.probe_python.CPU")
+#     @patch("open_run_lab.sdk.internal.probe_python.Apple")
+#     @patch("open_run_lab.sdk.internal.probe_python.sys.platform", "linux")
 #     def test_both_disabled(self, mock_apple, mock_cpu, mock_memory, make_ctx):
 #         """hardware=False, monitor=False: metadata.hardware 为 None"""
 #         env_patches = _mock_env_none()
@@ -217,10 +217,10 @@
 #         mock_cpu.get.assert_not_called()
 #         mock_memory.get.assert_not_called()
 #
-#     @patch("swanlab.sdk.internal.probe_python.Memory")
-#     @patch("swanlab.sdk.internal.probe_python.CPU")
-#     @patch("swanlab.sdk.internal.probe_python.Apple")
-#     @patch("swanlab.sdk.internal.probe_python.sys.platform", "linux")
+#     @patch("open_run_lab.sdk.internal.probe_python.Memory")
+#     @patch("open_run_lab.sdk.internal.probe_python.CPU")
+#     @patch("open_run_lab.sdk.internal.probe_python.Apple")
+#     @patch("open_run_lab.sdk.internal.probe_python.sys.platform", "linux")
 #     def test_hardware_false_monitor_true(self, mock_apple, mock_cpu, mock_memory, make_ctx):
 #         """hardware=False, monitor=True: 内部采集了硬件（用于 shim），但 metadata 中被删除"""
 #         mock_apple.get.return_value = None
@@ -241,10 +241,10 @@
 #             for p in env_patches:
 #                 p.stop()
 #
-#     @patch("swanlab.sdk.internal.probe_python.Memory")
-#     @patch("swanlab.sdk.internal.probe_python.CPU")
-#     @patch("swanlab.sdk.internal.probe_python.Apple")
-#     @patch("swanlab.sdk.internal.probe_python.sys.platform", "linux")
+#     @patch("open_run_lab.sdk.internal.probe_python.Memory")
+#     @patch("open_run_lab.sdk.internal.probe_python.CPU")
+#     @patch("open_run_lab.sdk.internal.probe_python.Apple")
+#     @patch("open_run_lab.sdk.internal.probe_python.sys.platform", "linux")
 #     def test_hardware_true_monitor_false(self, mock_apple, mock_cpu, mock_memory, make_ctx):
 #         """hardware=True, monitor=False: 正常采集硬件信息"""
 #         mock_apple.get.return_value = None
@@ -270,10 +270,10 @@
 # class TestHardwareCollectionErrorHandling:
 #     """测试 vendor 采集失败时的优雅降级"""
 #
-#     @patch("swanlab.sdk.internal.probe_python.Memory")
-#     @patch("swanlab.sdk.internal.probe_python.CPU")
-#     @patch("swanlab.sdk.internal.probe_python.Apple")
-#     @patch("swanlab.sdk.internal.probe_python.sys.platform", "linux")
+#     @patch("open_run_lab.sdk.internal.probe_python.Memory")
+#     @patch("open_run_lab.sdk.internal.probe_python.CPU")
+#     @patch("open_run_lab.sdk.internal.probe_python.Apple")
+#     @patch("open_run_lab.sdk.internal.probe_python.sys.platform", "linux")
 #     def test_all_vendors_none(self, mock_apple, mock_cpu, mock_memory, make_ctx):
 #         """所有 vendor 返回 None: HardwareSnapshot 仍创建，所有字段为 None"""
 #         mock_apple.get.return_value = None
@@ -292,10 +292,10 @@
 #             for p in env_patches:
 #                 p.stop()
 #
-#     @patch("swanlab.sdk.internal.probe_python.Memory")
-#     @patch("swanlab.sdk.internal.probe_python.CPU")
-#     @patch("swanlab.sdk.internal.probe_python.Apple")
-#     @patch("swanlab.sdk.internal.probe_python.sys.platform", "linux")
+#     @patch("open_run_lab.sdk.internal.probe_python.Memory")
+#     @patch("open_run_lab.sdk.internal.probe_python.CPU")
+#     @patch("open_run_lab.sdk.internal.probe_python.Apple")
+#     @patch("open_run_lab.sdk.internal.probe_python.sys.platform", "linux")
 #     def test_cpu_none_memory_ok(self, mock_apple, mock_cpu, mock_memory, make_ctx):
 #         """Apple=None, CPU=None, Memory 有效: cpu 为 None，memory 有值"""
 #         mock_apple.get.return_value = None
@@ -316,10 +316,10 @@
 #             for p in env_patches:
 #                 p.stop()
 #
-#     @patch("swanlab.sdk.internal.probe_python.Memory")
-#     @patch("swanlab.sdk.internal.probe_python.CPU")
-#     @patch("swanlab.sdk.internal.probe_python.Apple")
-#     @patch("swanlab.sdk.internal.probe_python.sys.platform", "linux")
+#     @patch("open_run_lab.sdk.internal.probe_python.Memory")
+#     @patch("open_run_lab.sdk.internal.probe_python.CPU")
+#     @patch("open_run_lab.sdk.internal.probe_python.Apple")
+#     @patch("open_run_lab.sdk.internal.probe_python.sys.platform", "linux")
 #     def test_cpu_ok_memory_none(self, mock_apple, mock_cpu, mock_memory, make_ctx):
 #         """Apple=None, CPU 有效, Memory=None: cpu 有值，memory 为 None"""
 #         mock_apple.get.return_value = None
@@ -339,10 +339,10 @@
 #             for p in env_patches:
 #                 p.stop()
 #
-#     @patch("swanlab.sdk.internal.probe_python.Memory")
-#     @patch("swanlab.sdk.internal.probe_python.CPU")
-#     @patch("swanlab.sdk.internal.probe_python.Apple")
-#     @patch("swanlab.sdk.internal.probe_python.sys.platform", "linux")
+#     @patch("open_run_lab.sdk.internal.probe_python.Memory")
+#     @patch("open_run_lab.sdk.internal.probe_python.CPU")
+#     @patch("open_run_lab.sdk.internal.probe_python.Apple")
+#     @patch("open_run_lab.sdk.internal.probe_python.sys.platform", "linux")
 #     def test_partial_environment(self, mock_apple, mock_cpu, mock_memory, make_ctx):
 #         """部分环境信息采集: git 有效，其余 None"""
 #         mock_apple.get.return_value = None
@@ -350,10 +350,10 @@
 #         mock_memory.get.return_value = None
 #         git_snapshot = GitSnapshot(remote_url="https://github.com/test/repo", branch="main", commit="abc123")
 #         with (
-#             patch("swanlab.sdk.internal.probe_python.git.get", return_value=git_snapshot),
-#             patch("swanlab.sdk.internal.probe_python.runtime.get", return_value=None),
-#             patch("swanlab.sdk.internal.probe_python.conda.get", return_value=None),
-#             patch("swanlab.sdk.internal.probe_python.requirements.get", return_value=None),
+#             patch("open_run_lab.sdk.internal.probe_python.git.get", return_value=git_snapshot),
+#             patch("open_run_lab.sdk.internal.probe_python.runtime.get", return_value=None),
+#             patch("open_run_lab.sdk.internal.probe_python.conda.get", return_value=None),
+#             patch("open_run_lab.sdk.internal.probe_python.requirements.get", return_value=None),
 #         ):
 #             env, monitor = _new_raw(make_ctx(hardware=True, git=True))
 #             assert env.metadata.git is not None
@@ -371,10 +371,10 @@
 # class TestHardwareSnapshotConsistency:
 #     """测试返回数据的结构一致性"""
 #
-#     @patch("swanlab.sdk.internal.probe_python.Memory")
-#     @patch("swanlab.sdk.internal.probe_python.CPU")
-#     @patch("swanlab.sdk.internal.probe_python.Apple")
-#     @patch("swanlab.sdk.internal.probe_python.sys.platform", "linux")
+#     @patch("open_run_lab.sdk.internal.probe_python.Memory")
+#     @patch("open_run_lab.sdk.internal.probe_python.CPU")
+#     @patch("open_run_lab.sdk.internal.probe_python.Apple")
+#     @patch("open_run_lab.sdk.internal.probe_python.sys.platform", "linux")
 #     def test_return_type(self, mock_apple, mock_cpu, mock_memory, make_ctx):
 #         """new(ctx) 返回 (SystemEnvironment, None)"""
 #         mock_apple.get.return_value = None
@@ -393,10 +393,10 @@
 #             for p in env_patches:
 #                 p.stop()
 #
-#     @patch("swanlab.sdk.internal.probe_python.Memory")
-#     @patch("swanlab.sdk.internal.probe_python.CPU")
-#     @patch("swanlab.sdk.internal.probe_python.Apple")
-#     @patch("swanlab.sdk.internal.probe_python.sys.platform", "linux")
+#     @patch("open_run_lab.sdk.internal.probe_python.Memory")
+#     @patch("open_run_lab.sdk.internal.probe_python.CPU")
+#     @patch("open_run_lab.sdk.internal.probe_python.Apple")
+#     @patch("open_run_lab.sdk.internal.probe_python.sys.platform", "linux")
 #     def test_accelerators_always_empty(self, mock_apple, mock_cpu, mock_memory, make_ctx):
 #         """accelerators 始终为空列表（尚未实现）"""
 #         mock_apple.get.return_value = None

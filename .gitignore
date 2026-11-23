@@ -2,7 +2,7 @@
 temp/
 package.mock.json
 .env
-!swanlab/deprecated/
+!open_run_lab/deprecated/
 
 # playground
 playground/
@@ -19,8 +19,8 @@ playground/
 *.swp
 
 # python
-swanlog/
-.swanlab/
+orlab-log/
+.orlab/
 __pycache__/
 *.py[cod]
 *$py.class

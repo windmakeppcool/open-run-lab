@@ -10,9 +10,9 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from swanlab.sdk.internal.bus.events import MetricDefineEvent
-from swanlab.sdk.internal.pkg import fork
-from swanlab.sdk.internal.run import Run, fmt
+from open_run_lab.sdk.internal.bus.events import MetricDefineEvent
+from open_run_lab.sdk.internal.pkg import fork
+from open_run_lab.sdk.internal.run import Run, fmt
 
 
 class _MockRun:

@@ -15,14 +15,14 @@ from unittest.mock import patch
 
 import pytest
 
-from swanlab.proto.swanlab.grpc.core.v1.core_pb2 import (
+from open_run_lab.proto.orlab.grpc.core.v1.core_pb2 import (
     DeliverRunFinishRequest,
     DeliverRunStartRequest,
 )
-from swanlab.proto.swanlab.run.v1.run_pb2 import FinishRecord, RunState, StartRecord
-from swanlab.proto.swanlab.settings.core.v1.core_pb2 import CoreSettings as CoreSettingsPb
-from swanlab.sdk.internal.core_python import CorePython
-from swanlab.sdk.internal.core_python.store import DataStoreWriter, NullDataStoreWriter
+from open_run_lab.proto.orlab.run.v1.run_pb2 import FinishRecord, RunState, StartRecord
+from open_run_lab.proto.orlab.settings.core.v1.core_pb2 import CoreSettings as CoreSettingsPb
+from open_run_lab.sdk.internal.core_python import CorePython
+from open_run_lab.sdk.internal.core_python.store import DataStoreWriter, NullDataStoreWriter
 
 
 def _start_request(tmp_path, *, skip_store: bool = False) -> DeliverRunStartRequest:
@@ -76,12 +76,12 @@ class TestCorePythonPublish:
     def test_offline_upsert_before_start_is_ignored(self, tmp_path):
         """未启动时 upsert 只告警，不抛错"""
         core = CorePython("offline")
-        with patch("swanlab.sdk.internal.core_python.core.console.warning") as warning:
+        with patch("open_run_lab.sdk.internal.core_python.core.console.warning") as warning:
             core.upsert_scalars([])
         warning.assert_called_once()
 
     def test_offline_upsert_columns_persists(self, tmp_path):
-        from swanlab.proto.swanlab.metric.column.v1.column_pb2 import (
+        from open_run_lab.proto.orlab.metric.column.v1.column_pb2 import (
             ColumnClass,
             ColumnRecord,
             ColumnType,

@@ -38,21 +38,21 @@ import time
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-from swanlab.proto.swanlab.metric.column.v1.column_pb2 import ColumnType
-from swanlab.proto.swanlab.metric.data.v1.data_pb2 import (
+from open_run_lab.proto.orlab.metric.column.v1.column_pb2 import ColumnType
+from open_run_lab.proto.orlab.metric.data.v1.data_pb2 import (
     MediaItem,
     MediaRecord,
     MediaValue,
     ScalarRecord,
     ScalarValue,
 )
-from swanlab.proto.swanlab.record.v1.record_pb2 import Record
-from swanlab.proto.swanlab.save.v1.save_pb2 import SavePolicy, SaveRecord, SaveType
-from swanlab.sdk.internal.core_python.context import CoreConfig, CoreContext
-from swanlab.sdk.internal.core_python.core import CorePython
-from swanlab.sdk.internal.core_python.store import DataStoreReader, DataStoreWriter, NullDataStoreWriter
-from swanlab.sdk.internal.core_python.watcher import create_save_links
-from swanlab.sdk.internal.pkg import adapter, fs
+from open_run_lab.proto.orlab.record.v1.record_pb2 import Record
+from open_run_lab.proto.orlab.save.v1.save_pb2 import SavePolicy, SaveRecord, SaveType
+from open_run_lab.sdk.internal.core_python.context import CoreConfig, CoreContext
+from open_run_lab.sdk.internal.core_python.core import CorePython
+from open_run_lab.sdk.internal.core_python.store import DataStoreReader, DataStoreWriter, NullDataStoreWriter
+from open_run_lab.sdk.internal.core_python.watcher import create_save_links
+from open_run_lab.sdk.internal.pkg import adapter, fs
 
 # ===========================================================================
 # 参数配置

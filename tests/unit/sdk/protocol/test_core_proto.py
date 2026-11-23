@@ -5,7 +5,7 @@
 @description: Core proto 启动错误分类契约
 """
 
-from swanlab.proto.swanlab.grpc.core.v1 import core_pb2
+from open_run_lab.proto.orlab.grpc.core.v1 import core_pb2
 
 
 def test_core_error_kind_enum_and_field():

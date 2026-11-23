@@ -2,11 +2,11 @@
 @author: cunyue
 @file: test_merge_settings.py
 @time: 2026/3/14
-@description: 测试 swanlab.merge_settings 方法
+@description: 测试 open_run_lab.merge_settings 方法
 """
 
-from swanlab.sdk.cmd.merge_settings import merge_settings
-from swanlab.sdk.internal.settings import Settings, create_settings
+from open_run_lab.sdk.cmd.merge_settings import merge_settings
+from open_run_lab.sdk.internal.settings import Settings, create_settings
 
 
 class TestMergeSettings:

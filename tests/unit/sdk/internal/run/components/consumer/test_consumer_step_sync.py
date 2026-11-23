@@ -10,11 +10,11 @@ from unittest.mock import MagicMock
 import pytest
 from google.protobuf.timestamp_pb2 import Timestamp
 
-from swanlab.proto.swanlab.metric.column.v1.column_pb2 import ColumnType
-from swanlab.sdk.internal.bus.events import MetricDefineEvent, MetricLogEvent
-from swanlab.sdk.internal.context import RunContext
-from swanlab.sdk.internal.run.components.consumer import BackgroundConsumer
-from swanlab.sdk.internal.run.transforms import Text
+from open_run_lab.proto.orlab.metric.column.v1.column_pb2 import ColumnType
+from open_run_lab.sdk.internal.bus.events import MetricDefineEvent, MetricLogEvent
+from open_run_lab.sdk.internal.context import RunContext
+from open_run_lab.sdk.internal.run.components.consumer import BackgroundConsumer
+from open_run_lab.sdk.internal.run.transforms import Text
 
 
 def _make_consumer(tmp_path: Path) -> BackgroundConsumer:
@@ -145,7 +145,7 @@ def test_step_sync_default_zero_at_each_y_step_then_forward_fill_after_real_x(tm
 def test_real_x_after_injected_x_warns_once_and_updates_next_step_cache(tmp_path: Path, monkeypatch):
     warnings = []
     monkeypatch.setattr(
-        "swanlab.sdk.internal.run.components.consumer.resolver.console.warning",
+        "open_run_lab.sdk.internal.run.components.consumer.resolver.console.warning",
         lambda message: warnings.append(message),
     )
     consumer = _make_consumer(tmp_path)
@@ -294,7 +294,7 @@ def test_dropped_y_no_spurious_real_conflict_warning(tmp_path: Path, monkeypatch
     """Y 被丢弃后未标 INJECTED，真实 X 晚到同 step 不触发误 REAL_CONFLICT。"""
     warnings = []
     monkeypatch.setattr(
-        "swanlab.sdk.internal.run.components.consumer.resolver.console.warning",
+        "open_run_lab.sdk.internal.run.components.consumer.resolver.console.warning",
         lambda message: warnings.append(message),
     )
     consumer = _make_consumer(tmp_path)

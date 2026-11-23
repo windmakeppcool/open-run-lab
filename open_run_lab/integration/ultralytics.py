@@ -1,0 +1,253 @@
+"""
+Docs: https://docs.orlab.cn/guide_cloud/integration/integration-ultralytics.html
+
+Usage:
+------
+from ultralytics import YOLO
+import open_run_lab
+from open_run_lab.integration.ultralytics import add_orlab_callback
+
+model = YOLO("yolov8n.pt")
+cb = add_orlab_callback(model)
+
+open_run_lab.init(project="my-project", callbacks=[cb])
+model.train(data="coco128.yaml", epochs=3)
+open_run_lab.finish()
+------
+
+For distributed training, add to ultralytics source:
+  your_env/ultralytics/utils/callbacks/base.py → add_integration_callbacks():
+    from open_run_lab.integration.ultralytics import return_orlab_callback
+    callbacks_list.extend([..., return_orlab_callback()])
+"""
+
+from __future__ import annotations
+
+from collections import Counter
+from typing import TYPE_CHECKING, Any, List, Optional
+
+import open_run_lab
+from open_run_lab import Callback
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+_processed_plots: dict[str, int] = {}
+
+
+class OpenRunLabCallback(Callback):
+    def __init__(
+        self,
+        *,
+        project: Optional[str] = None,
+        workspace: Optional[str] = None,
+        experiment_name: Optional[str] = None,
+        description: Optional[str] = None,
+        log_dir: Optional[str] = None,
+        logdir: Optional[str] = None,
+        mode: Optional[str] = None,
+        tags: Optional[List[str]] = None,
+        **kwargs: Any,
+    ) -> None:
+        if logdir is not None:
+            import warnings
+
+            warnings.warn(
+                "The `logdir` parameter is deprecated, use `log_dir` instead.", DeprecationWarning, stacklevel=2
+            )
+            log_dir = logdir
+        self._init_kwargs: dict[str, Any] = {}
+        for key, value in [
+            ("project", project),
+            ("workspace", workspace),
+            ("experiment_name", experiment_name),
+            ("description", description),
+            ("log_dir", log_dir),
+            ("mode", mode),
+            ("tags", tags),
+        ]:
+            if value is not None:
+                self._init_kwargs[key] = value
+        self._init_kwargs.update(kwargs)
+        tags_val = self._init_kwargs.get("tags", [])
+        if "ultralytics" not in tags_val:
+            tags_val.append("ultralytics")
+        self._init_kwargs["tags"] = tags_val
+
+        self._initialized = False
+        self._step_counter: Counter = Counter()
+        self._model: Any = None
+
+    @property
+    def name(self) -> str:
+        return "orlab-integration-ultralytics"
+
+    # --- open_run_lab.Callback hooks ---
+
+    def on_run_initialized(self, run_dir: Path, path: str, **kwargs) -> None:
+        run = self._get_active_run()
+        if run is not None:
+            run.config["FRAMEWORK"] = "ultralytics"
+        self._initialized = True
+
+    def on_run_finished(self, state: str, error: Optional[str] = None, **kwargs) -> None:
+        self._initialized = False
+        self._step_counter.clear()
+        _processed_plots.clear()
+
+    # --- Ultralytics callback methods ---
+
+    def on_pretrain_routine_start(self, trainer: Any) -> None:
+        self._ensure_init()
+        run = self._get_active_run()
+        if run is None:
+            return
+        trainer_args = vars(trainer.args)
+        if "project" not in self._init_kwargs and getattr(trainer.args, "project", None):
+            pass  # project already set during init
+        if "experiment_name" not in self._init_kwargs and getattr(trainer.args, "name", None):
+            pass
+        run.config.update(trainer_args)
+
+    def on_train_epoch_end(self, trainer: Any) -> None:
+        run = self._get_active_run()
+        if run is None:
+            return
+        step = trainer.epoch + 1
+        open_run_lab.log(trainer.label_loss_items(trainer.tloss, prefix="train"), step=step)
+        open_run_lab.log(trainer.lr, step=step)
+        if trainer.epoch == 1:
+            self._log_plots(trainer.plots, step=step, tag="Plots")
+
+    def on_fit_epoch_end(self, trainer: Any) -> None:
+        run = self._get_active_run()
+        if run is None:
+            return
+        step = trainer.epoch + 1
+        self._step_counter[step] += 1
+
+        if self._step_counter[step] == 2:
+            for key, value in trainer.metrics.items():
+                open_run_lab.log({f"FinalValBestModel/{key}": value}, step=step)
+        else:
+            open_run_lab.log(trainer.metrics, step=step)
+
+        self._log_plots(trainer.plots, step=step, tag="Train/Plots")
+        self._log_plots(trainer.validator.plots, step=step, tag="Train/ValPlots")
+
+        if trainer.epoch == 0:
+            try:
+                from ultralytics.utils.torch_utils import model_info_for_loggers  # type: ignore
+
+                open_run_lab.log(model_info_for_loggers(trainer), step=step)
+            except ImportError:
+                pass
+
+    def on_train_end(self, trainer: Any) -> None:
+        step = trainer.epoch + 1
+        self._log_plots(trainer.plots, step=step, tag="TrainEnd/Plots")
+        self._log_plots(trainer.validator.plots, step=step, tag="TrainEnd/ValPlots")
+
+    # --- helpers ---
+
+    def _log_plots(self, plots: dict, step: int, tag: str) -> None:
+        run = self._get_active_run()
+        if run is None:
+            return
+        image_list = []
+        for name, params in plots.copy().items():
+            timestamp = params["timestamp"]
+            if _processed_plots.get(name) != timestamp:
+                image_list.append(open_run_lab.Image(str(name), caption=name.stem))
+                _processed_plots[name] = timestamp
+        if image_list:
+            open_run_lab.log({tag: image_list}, step=step)
+
+    def _ensure_init(self) -> None:
+        if self._initialized:
+            return
+        if self._get_active_run() is not None:
+            self._initialized = True
+            return
+        open_run_lab.init(callbacks=[self], **self._init_kwargs)
+
+    @staticmethod
+    def _get_active_run():
+        try:
+            return open_run_lab.get_run()
+        except RuntimeError:
+            return None
+
+
+def add_orlab_callback(
+    model: Any,
+    *,
+    project: Optional[str] = None,
+    workspace: Optional[str] = None,
+    experiment_name: Optional[str] = None,
+    description: Optional[str] = None,
+    log_dir: Optional[str] = None,
+    logdir: Optional[str] = None,
+    mode: Optional[str] = None,
+    tags: Optional[List[str]] = None,
+    **kwargs: Any,
+) -> Any:
+    if logdir is not None:
+        import warnings
+
+        warnings.warn("The `logdir` parameter is deprecated, use `log_dir` instead.", DeprecationWarning, stacklevel=2)
+        log_dir = logdir
+    cb = OpenRunLabCallback(
+        project=project,
+        workspace=workspace,
+        experiment_name=experiment_name,
+        description=description,
+        log_dir=log_dir,
+        mode=mode,
+        tags=tags,
+        **kwargs,
+    )
+    callbacks = {
+        "on_pretrain_routine_start": cb.on_pretrain_routine_start,
+        "on_train_epoch_end": cb.on_train_epoch_end,
+        "on_fit_epoch_end": cb.on_fit_epoch_end,
+        "on_train_end": cb.on_train_end,
+    }
+    for event, callback_fn in callbacks.items():
+        model.add_callback(event, callback_fn)
+    return model
+
+
+def return_orlab_callback(
+    *,
+    project: Optional[str] = None,
+    workspace: Optional[str] = None,
+    experiment_name: Optional[str] = None,
+    description: Optional[str] = None,
+    log_dir: Optional[str] = None,
+    logdir: Optional[str] = None,
+    mode: Optional[str] = None,
+    tags: Optional[List[str]] = None,
+    **kwargs: Any,
+) -> dict:
+    if logdir is not None:
+        import warnings
+
+        warnings.warn("The `logdir` parameter is deprecated, use `log_dir` instead.", DeprecationWarning, stacklevel=2)
+        log_dir = logdir
+    cb = OpenRunLabCallback(
+        project=project,
+        workspace=workspace,
+        experiment_name=experiment_name,
+        description=description,
+        log_dir=log_dir,
+        mode=mode,
+        tags=tags,
+        **kwargs,
+    )
+    return {
+        "on_pretrain_routine_start": cb.on_pretrain_routine_start,
+        "on_train_epoch_end": cb.on_train_epoch_end,
+        "on_fit_epoch_end": cb.on_fit_epoch_end,
+        "on_train_end": cb.on_train_end,
+    }

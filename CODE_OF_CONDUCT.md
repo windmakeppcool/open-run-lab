@@ -56,7 +56,7 @@ This Code of Conduct is in effect in all community spaces and applies when someo
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
 reported to the community leaders responsible for enforcement at
-opensource@illasoft.com.
+security@example.com, or through the Issues of this repository.
 All complaints will be reviewed and investigated promptly and fairly.
 
 All community leaders are obligated to respect the privacy and security of the

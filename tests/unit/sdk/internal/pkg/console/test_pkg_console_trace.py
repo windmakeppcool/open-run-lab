@@ -7,7 +7,7 @@
 
 from unittest.mock import MagicMock, patch
 
-from swanlab.sdk.internal.pkg import console
+from open_run_lab.sdk.internal.pkg import console
 
 # ==============================================================================
 # 基础行为

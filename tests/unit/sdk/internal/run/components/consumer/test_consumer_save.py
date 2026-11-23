@@ -6,11 +6,11 @@ from unittest.mock import MagicMock
 
 from google.protobuf.timestamp_pb2 import Timestamp
 
-from swanlab.proto.swanlab.save.v1.save_pb2 import SavePolicy, SaveRecord
-from swanlab.proto.swanlab.terminal.v1.log_pb2 import LogLevel
-from swanlab.sdk.internal.bus.events import FileSaveEvent, LogEvent
-from swanlab.sdk.internal.context import RunContext
-from swanlab.sdk.internal.run.components.consumer import BackgroundConsumer
+from open_run_lab.proto.orlab.save.v1.save_pb2 import SavePolicy, SaveRecord
+from open_run_lab.proto.orlab.terminal.v1.log_pb2 import LogLevel
+from open_run_lab.sdk.internal.bus.events import FileSaveEvent, LogEvent
+from open_run_lab.sdk.internal.context import RunContext
+from open_run_lab.sdk.internal.run.components.consumer import BackgroundConsumer
 
 
 def _make_consumer(tmp_path: Path, batch_size: int = 100):

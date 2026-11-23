@@ -12,11 +12,11 @@ from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 
-import swanlab
-from swanlab.proto.swanlab.grpc.core.v1.core_pb2 import ConfirmRunFinishResponse, DeliverRunFinishResponse
-from swanlab.sdk.internal import run as run_module
-from swanlab.sdk.internal.pkg import fork
-from swanlab.sdk.internal.run import Run, clear_run, get_run, has_run
+import open_run_lab
+from open_run_lab.proto.orlab.grpc.core.v1.core_pb2 import ConfirmRunFinishResponse, DeliverRunFinishResponse
+from open_run_lab.sdk.internal import run as run_module
+from open_run_lab.sdk.internal.pkg import fork
+from open_run_lab.sdk.internal.run import Run, clear_run, get_run, has_run
 
 
 def _make_exc_info(exc: BaseException):
@@ -82,12 +82,12 @@ class TestFinish:
         run = _make_real_finish_run()
 
         with (
-            patch("swanlab.sdk.internal.run.greeting.goodbye"),
-            patch("swanlab.sdk.internal.run.run_with_progress") as mock_run_with_progress,
-            patch("swanlab.sdk.internal.run.atexit.unregister"),
-            patch("swanlab.sdk.internal.run.signal.signal"),
-            patch("swanlab.sdk.internal.run.console.reset"),
-            patch("swanlab.sdk.internal.run._current_run", run),
+            patch("open_run_lab.sdk.internal.run.greeting.goodbye"),
+            patch("open_run_lab.sdk.internal.run.run_with_progress") as mock_run_with_progress,
+            patch("open_run_lab.sdk.internal.run.atexit.unregister"),
+            patch("open_run_lab.sdk.internal.run.signal.signal"),
+            patch("open_run_lab.sdk.internal.run.console.reset"),
+            patch("open_run_lab.sdk.internal.run._current_run", run),
         ):
             mock_run_with_progress.return_value = ConfirmRunFinishResponse(success=not pending, message="finish result")
             run.finish()
@@ -95,7 +95,7 @@ class TestFinish:
             assert has_run() is False
             with pytest.raises(RuntimeError, match="No active Run"):
                 get_run()
-            assert swanlab.run is None
+            assert open_run_lab.run is None
             # confirm 失败（如存在未确认上传记录）时也照常清理全局实例，失败原因已在 finish 内报告
             assert run_module._current_run is None
 
@@ -229,11 +229,11 @@ class TestSigintRegistration:
         """在重 mock 下执行一次真实的 Run.__init__"""
         ctx = MagicMock()
         with (
-            patch("swanlab.sdk.internal.run.Components"),
-            patch("swanlab.sdk.internal.run.DeliverProbeStartRequest"),
-            patch("swanlab.sdk.internal.run.console"),
-            patch("swanlab.sdk.internal.run.greeting"),
-            patch("swanlab.sdk.internal.run.atexit"),
+            patch("open_run_lab.sdk.internal.run.Components"),
+            patch("open_run_lab.sdk.internal.run.DeliverProbeStartRequest"),
+            patch("open_run_lab.sdk.internal.run.console"),
+            patch("open_run_lab.sdk.internal.run.greeting"),
+            patch("open_run_lab.sdk.internal.run.atexit"),
         ):
             return Run(ctx)
 
@@ -276,11 +276,11 @@ class TestFinishSigintRestore:
             run = _make_real_finish_run()
             run._is_main_thread = is_main_thread
             with (
-                patch("swanlab.sdk.internal.run.greeting.goodbye"),
-                patch("swanlab.sdk.internal.run.run_with_progress") as mock_rwp,
-                patch("swanlab.sdk.internal.run.atexit.unregister"),
-                patch("swanlab.sdk.internal.run.signal.signal") as mock_signal,
-                patch("swanlab.sdk.internal.run.console.reset"),
+                patch("open_run_lab.sdk.internal.run.greeting.goodbye"),
+                patch("open_run_lab.sdk.internal.run.run_with_progress") as mock_rwp,
+                patch("open_run_lab.sdk.internal.run.atexit.unregister"),
+                patch("open_run_lab.sdk.internal.run.signal.signal") as mock_signal,
+                patch("open_run_lab.sdk.internal.run.console.reset"),
             ):
                 mock_rwp.return_value = ConfirmRunFinishResponse(success=True, message="OK")
                 run.finish()

@@ -12,9 +12,9 @@ from unittest.mock import MagicMock, patch
 import pytest
 import requests
 
-from swanlab.plugin.notification import NotificationCallback
-from swanlab.plugin.notification.base import build_run_url
-from swanlab.plugin.notification.lark import LarkCallback, _LarkBot
+from open_run_lab.plugin.notification import NotificationCallback
+from open_run_lab.plugin.notification.base import build_run_url
+from open_run_lab.plugin.notification.lark import LarkCallback, _LarkBot
 
 # ---------------------------------------------------------------------------
 # Helpers & fixtures
@@ -23,7 +23,7 @@ from swanlab.plugin.notification.lark import LarkCallback, _LarkBot
 
 def _mock_settings(**overrides):
     """Create a real Settings instance suitable for isinstance checks."""
-    from swanlab.sdk.internal.settings import Settings
+    from open_run_lab.sdk.internal.settings import Settings
 
     s = Settings()
     for k, v in overrides.items():
@@ -127,12 +127,12 @@ class TestNotificationCallbackBase:
             lark_cb.on_run_finished(state="crashed", error="OOM")
             assert mock_run.call_args[0][2] == "OOM"
 
-    @patch("swanlab.plugin.notification.base.build_run_url", return_value="https://swanlab.cn/@u/p/runs/1")
+    @patch("open_run_lab.plugin.notification.base.build_run_url", return_value="https://orlab.cn/@u/p/runs/1")
     def test_get_url_with_path(self, _mock_build):
         cb = LarkCallback(webhook_url="https://example.com/webhook")
         cb._settings = _mock_settings()
         cb._path = "/u/p/1"
-        assert cb._get_url() == "https://swanlab.cn/@u/p/runs/1"
+        assert cb._get_url() == "https://orlab.cn/@u/p/runs/1"
 
     def test_get_url_without_settings(self):
         cb = LarkCallback(webhook_url="https://example.com/webhook")
@@ -145,8 +145,8 @@ class TestNotificationCallbackBase:
 
 
 class TestLarkCallbackSend:
-    @patch("swanlab.plugin.notification.lark.requests.post")
-    @patch("swanlab.plugin.notification.lark.console")
+    @patch("open_run_lab.plugin.notification.lark.requests.post")
+    @patch("open_run_lab.plugin.notification.lark.console")
     def test_success_without_secret(self, mock_console, mock_post, lark_cb):
         mock_post.return_value = _mock_response()
         lark_cb._send_notification("finished", None)
@@ -158,7 +158,7 @@ class TestLarkCallbackSend:
         mock_console.info.assert_called_once()
         mock_console.warning.assert_not_called()
 
-    @patch("swanlab.plugin.notification.lark.requests.post")
+    @patch("open_run_lab.plugin.notification.lark.requests.post")
     def test_success_with_secret_includes_sign(self, mock_post):
         cb = LarkCallback(webhook_url="https://lark.example.com/webhook", secret="my-secret")
         cb._settings = _mock_settings()
@@ -170,8 +170,8 @@ class TestLarkCallbackSend:
         assert "sign" in payload
         assert payload["timestamp"] > 0
 
-    @patch("swanlab.plugin.notification.lark.requests.post")
-    @patch("swanlab.plugin.notification.lark.console")
+    @patch("open_run_lab.plugin.notification.lark.requests.post")
+    @patch("open_run_lab.plugin.notification.lark.console")
     def test_business_error_warns(self, mock_console, mock_post, lark_cb):
         mock_post.return_value = _mock_response(json_body={"code": 19001, "msg": "invalid sign"})
         lark_cb._send_notification("finished", None)
@@ -180,7 +180,7 @@ class TestLarkCallbackSend:
         assert "LarkBot sending failed" in mock_console.warning.call_args[0][0]
         assert "invalid sign" in mock_console.warning.call_args[0][0]
 
-    @patch("swanlab.plugin.notification.lark.requests.post")
+    @patch("open_run_lab.plugin.notification.lark.requests.post")
     def test_payload_contains_error_content(self, mock_post):
         cb = LarkCallback(webhook_url="https://lark.example.com/webhook", language="en")
         cb._settings = _mock_settings()

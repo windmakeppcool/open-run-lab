@@ -12,7 +12,7 @@
 
 from __future__ import annotations
 
-from swanlab.sdk.internal.run.components.terminal.emulator import TerminalEmulator
+from open_run_lab.sdk.internal.run.components.terminal.emulator import TerminalEmulator
 
 # ==========================================
 # 辅助

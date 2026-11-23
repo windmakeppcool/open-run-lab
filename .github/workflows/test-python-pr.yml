@@ -5,7 +5,7 @@ on:
     # Run automatically for non-draft PRs and when a draft PR becomes ready for review.
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
-      - "swanlab/**"
+      - "open_run_lab/**"
       - "tests/**"
       - "pyproject.toml"
       - "uv.lock"

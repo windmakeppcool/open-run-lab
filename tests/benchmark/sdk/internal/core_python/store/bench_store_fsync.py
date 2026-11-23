@@ -21,7 +21,7 @@
 import time
 from typing import List
 
-from swanlab.sdk.internal.core_python.store import DataStoreReader, DataStoreWriter
+from open_run_lab.sdk.internal.core_python.store import DataStoreReader, DataStoreWriter
 
 # ===========================================================================
 # 参数配置
@@ -56,7 +56,7 @@ def test_bench_raw_store(tmp_path):
     写入 10,000 条 120 bytes 的 record，测量延迟分布和吞吐量，
     最后回读验证数据完整性。
     """
-    store_path = tmp_path / "raw_bench.swanlab"
+    store_path = tmp_path / "raw_bench.orlab"
 
     # 预生成 protobuf-like payload（带一些变化）
     payloads = [bytes([i % 256]) * PAYLOAD_SIZE for i in range(min(NUM_RECORDS, 256))]

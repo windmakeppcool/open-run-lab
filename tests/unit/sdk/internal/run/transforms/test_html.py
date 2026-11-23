@@ -12,9 +12,9 @@ from pathlib import Path
 import pytest
 from google.protobuf.timestamp_pb2 import Timestamp
 
-from swanlab.proto.swanlab.metric.column.v1.column_pb2 import ColumnType
-from swanlab.proto.swanlab.metric.data.v1.data_pb2 import MediaItem
-from swanlab.sdk.internal.run.transforms.html import Html
+from open_run_lab.proto.orlab.metric.column.v1.column_pb2 import ColumnType
+from open_run_lab.proto.orlab.metric.data.v1.data_pb2 import MediaItem
+from open_run_lab.sdk.internal.run.transforms.html import Html
 
 # ---------------------------------- 构造测试 ----------------------------------
 

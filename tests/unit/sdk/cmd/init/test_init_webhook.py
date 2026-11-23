@@ -12,7 +12,7 @@ from unittest.mock import MagicMock
 import pytest
 import responses
 
-from swanlab.sdk.cmd.init import send_webhook
+from open_run_lab.sdk.cmd.init import send_webhook
 
 
 @pytest.fixture
@@ -35,12 +35,12 @@ def mock_ctx():
 @pytest.fixture
 def setup_mocks(monkeypatch):
     """使用 monkeypatch 模拟外部依赖"""
-    # 模拟 get_swanlab_version
-    monkeypatch.setattr("swanlab.sdk.internal.pkg.helper.get_swanlab_version", lambda: "1.0.0")
+    # 模拟 get_orlab_version
+    monkeypatch.setattr("open_run_lab.sdk.internal.pkg.helper.get_orlab_version", lambda: "1.0.0")
 
     # 模拟 console.debug
     mock_console = MagicMock()
-    monkeypatch.setattr("swanlab.sdk.cmd.init.console", mock_console)
+    monkeypatch.setattr("open_run_lab.sdk.cmd.init.console", mock_console)
 
     return mock_console
 
@@ -63,7 +63,7 @@ def test_send_webhook_no_url(mock_ctx, setup_mocks):
 
     send_webhook(mock_ctx)
 
-    setup_mocks.debug.assert_called_once_with("Skipping webhook because SWANLAB_WEBHOOK is not set.")
+    setup_mocks.debug.assert_called_once_with("Skipping webhook because ORLAB_WEBHOOK is not set.")
 
 
 @responses.activate
@@ -88,7 +88,7 @@ def test_send_webhook_offline_mode(mock_ctx, setup_mocks):
     payload = json.loads(request.body)  # type: ignore
     assert payload == {
         "value": "test_webhook_value",
-        "swanlab": {
+        "orlab": {
             "version": "1.0.0",
             "mode": "offline",
             "run_dir": "/path/to/run_dir",
@@ -110,4 +110,4 @@ def test_send_webhook_serializes_path_run_dir(mock_ctx, setup_mocks):
     assert len(responses.calls) == 1
     request = responses.calls[0].request
     payload = json.loads(request.body)  # type: ignore
-    assert payload["swanlab"]["run_dir"] == str(mock_ctx.run_dir)
+    assert payload["orlab"]["run_dir"] == str(mock_ctx.run_dir)

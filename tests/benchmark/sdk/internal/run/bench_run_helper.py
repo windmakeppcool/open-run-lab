@@ -7,7 +7,7 @@
 
 import pytest
 
-import swanlab.sdk.internal.run.fmt as fmt
+import open_run_lab.sdk.internal.run.fmt as fmt
 
 
 @pytest.fixture(params=[10, 100, 1000], ids=["n=10", "n=100", "n=1000"])
@@ -61,12 +61,12 @@ def test_validate_valid(benchmark):
 
 def test_validate_dirty(benchmark, monkeypatch):
     """含非法字符的 key，触发 regex 替换"""
-    monkeypatch.setattr("swanlab.sdk.internal.run.fmt.console.warning", lambda *args: None)
+    monkeypatch.setattr("open_run_lab.sdk.internal.run.fmt.console.warning", lambda *args: None)
     benchmark(fmt.validate_key, "  bad key@epoch  ")
 
 
 def test_validate_long(benchmark, monkeypatch):
     """超长 key（300 字符），触发截断"""
-    monkeypatch.setattr("swanlab.sdk.internal.run.fmt.console.warning", lambda *args: None)
+    monkeypatch.setattr("open_run_lab.sdk.internal.run.fmt.console.warning", lambda *args: None)
     key = "x" * 300
     benchmark(fmt.validate_key, key)
